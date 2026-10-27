@@ -14,17 +14,23 @@ from openpyxl.utils import get_column_letter
 _DEF_AZUL = "172A4A"
 
 
+def _texto_seguro(texto: str) -> str:
+    """Evita que una celda pegada se interprete como fórmula al abrir CSV/XLSX."""
+    peligroso = texto.startswith(("\t", "\r", "\n")) or texto.lstrip().startswith(("=", "+", "-", "@"))
+    return "'" + texto if peligroso else texto
+
+
 def _valor(v: object) -> object:
     """Evita tipos NumPy y valores NaN/inf que Excel no representa bien."""
     if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
         return None
     if isinstance(v, (float, np.floating)) and np.isinf(v):
         return "+∞" if v > 0 else "−∞"
-    if isinstance(v, (np.integer, np.floating)):
+    if isinstance(v, np.generic):
         return v.item()
     if isinstance(v, (list, np.ndarray, tuple)):
-        return ", ".join(map(str, v))
-    return v
+        return _texto_seguro(", ".join(map(str, v)))
+    return _texto_seguro(v) if isinstance(v, str) else v
 
 
 def exportar_excel(tablas: Mapping[str, pd.DataFrame], destino: str | Path) -> Path:
@@ -51,7 +57,7 @@ def exportar_excel(tablas: Mapping[str, pd.DataFrame], destino: str | Path) -> P
             i += 1
         usados.add(nombre.lower())
         hoja = libro.create_sheet(nombre)
-        hoja.append(list(map(str, tabla.columns)))
+        hoja.append([_texto_seguro(str(nombre)) for nombre in tabla.columns])
         for fila in tabla.itertuples(index=False, name=None):
             hoja.append([_valor(v) for v in fila])
         for celda in hoja[1]:
@@ -77,5 +83,11 @@ def exportar_csv(tabla: pd.DataFrame, destino: str | Path) -> Path:
     if not isinstance(tabla, pd.DataFrame):
         raise TypeError("Se necesita una tabla de pandas.")
     ruta = Path(destino).with_suffix(".csv")
-    tabla.to_csv(ruta, index=False, encoding="utf-8-sig")
+    limpia = tabla.copy()
+    limpia.columns = [_texto_seguro(str(nombre)) for nombre in limpia.columns]
+    for indice, tipo in enumerate(tabla.dtypes):
+        if pd.api.types.is_object_dtype(tipo) or pd.api.types.is_string_dtype(tipo):
+            limpia.iloc[:, indice] = tabla.iloc[:, indice].map(
+                lambda valor: _texto_seguro(valor) if isinstance(valor, str) else valor)
+    limpia.to_csv(ruta, index=False, encoding="utf-8-sig")
     return ruta

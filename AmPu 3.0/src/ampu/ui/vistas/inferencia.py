@@ -275,7 +275,7 @@ class VistaInferencia(VistaTrabajo):
         self.conclusion.setText(salida["resumen"])
         a, b = salida["intervalo"] if salida["intervalo"] is not None else (float("nan"), float("nan"))
         self.indicadores.actualizar(salida["estadistico"], salida["p"], a, b)
-        self.tabla.mostrar(salida["tabla"])
+        self.mostrar_tabla_restaurada(self.tabla, salida["tabla"])
         tipo, *datos = salida["grafico"]
         if tipo == "barras":
             self.grafico.serie(*datos, self.tipo.currentText())
@@ -301,7 +301,7 @@ class VistaInferencia(VistaTrabajo):
         """Incluye datos, opciones, hipótesis y últimos resultados."""
         return {"tipo": self.tipo.currentData()[0], "x": self.x.toPlainText(), "y": self.y.toPlainText(),
                 **{k: getattr(self, k).value() for k in ("alfa", "mu0", "sigma1", "sigma2", "p0", "x1", "n1", "x2", "n2")},
-                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else None}
+                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else self._tabla_pendiente}
 
     def restaurar(self, datos: dict):
         """Carga parámetros y reproduce el contraste si había resultados."""
@@ -315,4 +315,9 @@ class VistaInferencia(VistaTrabajo):
             if k in datos:
                 getattr(self, k).setValue(datos[k])
         if datos.get("tabla") is not None:
-            self.calcular()
+            self.limpiar_resultado()
+            self._tabla_pendiente = datos["tabla"]
+            self.recalcular_restaurado()
+        else:
+            self.limpiar_resultado()
+            self.conclusion.setText("Elige una técnica para ver su interpretación.")

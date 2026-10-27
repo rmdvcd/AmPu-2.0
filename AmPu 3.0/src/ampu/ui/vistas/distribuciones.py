@@ -3,7 +3,7 @@
 import secrets
 
 import numpy as np
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QProgressBar, QPushButton, QScrollArea, QSpinBox, QSplitter, QVBoxLayout, QWidget,
@@ -144,7 +144,7 @@ class VistaDistribuciones(VistaTrabajo):
         self.separador.setSizes([440, 215])
         self._filtrar()
         self.selector.setCurrentIndex(self.selector.findData("binomial"))
-        QTimer.singleShot(150, self.calcular)
+        self.calcular_inicial(150)
 
     def _filtrar(self):
         """Filtra el catálogo; modelos nuevos aparecen sin tocar esta vista."""
@@ -235,7 +235,7 @@ class VistaDistribuciones(VistaTrabajo):
         self.ultimo = salida
         r = salida.respuesta
         self.indicadores.actualizar(r["probabilidad_o_densidad"], r["acumulada"], r["media"], r["desviacion"])
-        self.tabla.mostrar(salida.tabla)
+        self.mostrar_tabla_restaurada(self.tabla, salida.tabla)
         self._grafico_actual()
         self.aviso.emit(f"Modelo {self.selector.currentText()}: {len(salida.tabla)} filas calculadas.")
 
@@ -249,7 +249,7 @@ class VistaDistribuciones(VistaTrabajo):
         return {"clave": self.selector.currentData(), "categoria": self.categoria.currentData(),
                 "parametros": self.formulario.valores(), "evento": self.evento.text(),
                 "q": self.cuantil.value(), "semilla": self.semilla.value(), "grafico": self.grafico_tipo.currentData(),
-                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo is not None else None}
+                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo is not None else self._tabla_pendiente}
 
     def restaurar(self, estado: dict):
         """Aplica estado guardado y reproduce con la misma semilla."""
@@ -266,7 +266,9 @@ class VistaDistribuciones(VistaTrabajo):
         self.cuantil.setValue(float(estado.get("q", .5)))
         self.semilla.setValue(int(estado.get("semilla", 42)))
         self.grafico_tipo.setCurrentIndex(max(0, self.grafico_tipo.findData(estado.get("grafico", "densidad"))))
-        QTimer.singleShot(200, self.calcular)
+        self.limpiar_resultado()
+        self._tabla_pendiente = estado.get("tabla")
+        self.recalcular_restaurado()
 
     def tablas_exportables(self) -> dict:
         """Tablas exactamente como se ven, incluidas ediciones/ordenamiento."""

@@ -11,8 +11,8 @@ class Celda(QTableWidgetItem):
     """Ordena números por magnitud y texto por orden natural."""
 
     def __lt__(self, otro):
-        """Preserva ordenamiento numérico después de mostrar texto formateado."""
-        a, b = self.data(Qt.UserRole), otro.data(Qt.UserRole)
+        """Ordena por el valor vigente, no por un número previo a una edición."""
+        a, b = TablaDatos._valor(self), TablaDatos._valor(otro)
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             return a < b
         return self.text().casefold() < otro.text().casefold()
@@ -33,6 +33,13 @@ class TablaDatos(QTableWidget):
         self.setSortingEnabled(True)
         self.verticalHeader().setVisible(False)
         self.setWordWrap(False)
+        self.itemChanged.connect(self._actualizar_tooltip)
+
+    @staticmethod
+    def _actualizar_tooltip(item: QTableWidgetItem):
+        """No mostrar como «precisión original» el valor previo a una edición."""
+        if item.data(Qt.UserRole + 1) is not None and item.text() != item.data(Qt.UserRole + 1):
+            item.setToolTip(item.text())
 
     def mostrar(self, tabla: pd.DataFrame):
         """Puebla la tabla completa sin perder ordenamiento posterior."""
@@ -43,18 +50,21 @@ class TablaDatos(QTableWidget):
         self.setHorizontalHeaderLabels(list(map(str, tabla.columns)))
         for row, valores in enumerate(tabla.itertuples(index=False, name=None)):
             for col, valor in enumerate(valores):
-                if isinstance(valor, (int, float, np.number)):
+                if isinstance(valor, (int, np.integer)) and not isinstance(valor, (bool, np.bool_)):
+                    v = int(valor)
+                    texto = str(v)
+                elif isinstance(valor, (float, np.floating)):
                     v = float(valor)
-                    texto = "—" if np.isnan(v) else ("∞" if np.isinf(v) else f"{v:.8g}")
+                    texto = "—" if np.isnan(v) else ("∞" if v == float("inf") else
+                                                   "−∞" if v == float("-inf") else f"{v:.8g}")
                 elif valor is None:
-                    texto = "—"
-                    v = None
+                    texto, v = "—", None
                 else:
-                    texto = str(valor)
-                    v = None
+                    texto, v = str(valor), None
                 item = Celda(texto)
-                if v is not None and np.isfinite(v):
+                if v is not None and not (isinstance(v, float) and np.isnan(v)):
                     item.setData(Qt.UserRole, v)
+                    item.setData(Qt.UserRole + 1, texto)
                     item.setToolTip(str(valor))
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
@@ -72,7 +82,11 @@ class TablaDatos(QTableWidget):
     @staticmethod
     def _valor(item: QTableWidgetItem | None) -> object:
         """Interpreta valores editados como números cuando es posible."""
-        if item is None or item.text() == "—":
+        if item is None:
+            return None
+        if item.data(Qt.UserRole + 1) == item.text() and item.data(Qt.UserRole) is not None:
+            return item.data(Qt.UserRole)  # Sin editar: precisión y tipo originales.
+        if item.text() == "—":
             return None
         try:
             return float(item.text())

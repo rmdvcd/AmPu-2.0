@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices, QShortcut, QKeySequence
-from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
+from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings, QWebEngineUrlRequestInterceptor
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
@@ -12,13 +12,29 @@ from ampu.docs.teoria import DOCUMENTOS, listar_teoria, renderizar
 from ampu.ui.widgets.comunes import encabezado, etiqueta, marco
 
 
+class BloqueoRed(QWebEngineUrlRequestInterceptor):
+    """Ninguna lección solicita fuentes, scripts o imágenes a un servidor."""
+
+    def interceptRequest(self, informacion):
+        if informacion.requestUrl().scheme().lower() in ("http", "https", "ws", "wss", "ftp"):
+            informacion.block(True)
+
+
 class PaginaTeoria(QWebEnginePage):
-    """Abre enlaces externos fuera de la lección y evita navegación local ajena."""
+    """Abre enlaces voluntarios en el navegador del SO; la vista sigue offline."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.bloqueo_red = BloqueoRed(self)
+        self.profile().setUrlRequestInterceptor(self.bloqueo_red)
 
     def acceptNavigationRequest(self, url, tipo, es_marco_principal):
-        """Permite anclas y recursos locales, delega enlaces externos al SO."""
-        if url.scheme() in ("http", "https") and tipo == QWebEnginePage.NavigationTypeLinkClicked:
-            QDesktopServices.openUrl(url)
+        """Admite HTML local y anclas; rechaza navegación remota dentro de Qt."""
+        if url.scheme().lower() in ("http", "https"):
+            if tipo == QWebEnginePage.NavigationTypeLinkClicked and es_marco_principal:
+                QDesktopServices.openUrl(url)
+            return False
+        if url.scheme().lower() not in ("file", "data", "about"):
             return False
         return super().acceptNavigationRequest(url, tipo, es_marco_principal)
 
@@ -68,6 +84,7 @@ class VistaTeoria(QWidget):
         self.navegador = QWebEngineView()
         self.navegador.setPage(PaginaTeoria(self.navegador))
         self.navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+        self.navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
         self.navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
         self.navegador.setContextMenuPolicy(Qt.DefaultContextMenu)
         root.addWidget(self.navegador, 1)

@@ -4,7 +4,7 @@ import secrets
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QHBoxLayout, QPlainTextEdit, QProgressBar, QPushButton,
     QScrollArea, QSpinBox, QSplitter, QVBoxLayout, QWidget,
@@ -164,7 +164,7 @@ class VistaSimulacion(VistaTrabajo):
         separador.addWidget(card)
         separador.setSizes([425, 220])
         self._tipo()
-        QTimer.singleShot(260, self.calcular)
+        self.calcular_inicial(260)
 
     def _tipo(self):
         """Filtra modelos ajustables y bloquea entradas que no corresponden."""
@@ -221,7 +221,7 @@ class VistaSimulacion(VistaTrabajo):
         """Muestra valores reportables y figura interactiva."""
         self.ultimo = salida
         self.resumen.setText(salida["resumen"])
-        self.tabla.mostrar(salida["tabla"])
+        self.mostrar_tabla_restaurada(self.tabla, salida["tabla"])
         tipo, *datos = salida["grafico"]
         if tipo == "pi":
             self.grafico.puntos_pi(*datos)
@@ -253,7 +253,7 @@ class VistaSimulacion(VistaTrabajo):
         return {"tipo": self.tipo.currentData(), "modelo": self.modelo.currentData(),
                 "parametros": self.formulario.valores() if self.modelo.currentData() else {},
                 "n": self.n.value(), "semilla": self.semilla.value(), "datos": self.datos.toPlainText(),
-                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else None}
+                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else self._tabla_pendiente}
 
     def restaurar(self, d: dict):
         """Restaura los controles y ejecuta de nuevo si había una tabla."""
@@ -266,4 +266,9 @@ class VistaSimulacion(VistaTrabajo):
         self.semilla.setValue(int(d.get("semilla", 42)))
         self.datos.setPlainText(d.get("datos", ""))
         if d.get("tabla") is not None:
-            QTimer.singleShot(200, self.calcular)
+            self.limpiar_resultado()
+            self._tabla_pendiente = d["tabla"]
+            self.recalcular_restaurado()
+        else:
+            self.limpiar_resultado()
+            self.resumen.setText("Selecciona un experimento y ejecuta una simulación reproducible.")
