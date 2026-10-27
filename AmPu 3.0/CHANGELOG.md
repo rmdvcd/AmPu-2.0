@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## Sin publicar · cierre de pendientes de 3.0
+
+- Sesiones: se restauran las celdas editadas, el orden de filas y la hoja activa en las seis vistas; las otras hojas editadas ya no desaparecen al cambiar de pestaña. El motor recalcula indicadores/gráficos con la semilla guardada, sin confundir anotaciones de tablas con datos de entrada. Se descartan trabajos anteriores a una restauración, también al cargar una vista sin resultados.
+- Tabla: orden numérico actualizado tras editar una celda; los valores originales de coma flotante e identificadores enteros mantienen su precisión al exportar, aunque el texto en pantalla esté abreviado.
+- XLSX y CSV neutralizan fórmulas pegadas en celdas/cabeceras. Se agregaron pruebas de seguridad y regresión para sesiones, múltiples hojas, precisión y trabajos Qt asíncronos.
+- La teoría rechaza solicitudes remotas en QWebEngine y sigue ofreciendo enlaces de referencia en el navegador externo. Si faltan bibliotecas nativas, la navegación muestra un error claro sin dejar la interfaz rota. Se añadió prueba de integración con Chromium real (omitida *solo* cuando faltan bibliotecas nativas) y autoprueba estricta `--self-test` de KaTeX, figura, CSS y tema oscuro.
+- Autoprueba `--verify-resources` del ejecutable sin GUI; PyInstaller verifica versión, lecciones, figuras, fuentes, exportaciones, sesión JSON y helper/recursos de WebEngine después de compilar. Corregida la ruta de salida `--onedir` de Windows y añadidos iconos ICO/ICNS nativos. `--gui-self-test` exige verificación WebEngine en el SO de destino.
+- En Python 3.12.11: **123 pruebas aprobadas, 1 WebEngine omitida por bibliotecas NSS/X11 ausentes, 92 % cobertura de core con ramas, 121/121 cotejos SciPy**. Builds Linux `--onefile` y `--onedir` verificados a nivel de recursos/exportaciones; sigue pendiente la prueba visual *en cada escritorio/SO real*. Ningún suplente nativo de pruebas forma parte del código ni del binario.
+
 ## 3.0.0 · 2026-10-26
 
 ### Nueva implementación

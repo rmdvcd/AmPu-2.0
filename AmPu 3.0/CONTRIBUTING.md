@@ -16,7 +16,7 @@ python -m pytest --cov=ampu.core --cov-branch --cov-report=term-missing
 python scripts/validar_contra_scipy.py
 ```
 
-La UI necesita bibliotecas Qt del sistema. En Linux headless, `QT_QPA_PLATFORM=offscreen` ejecuta las pruebas Qt si las bibliotecas nativas están presentes; si faltan, `tests/test_ui.py` se omite con una razón explícita. **No** integres los suplentes nativos del sandbox en este repositorio ni empaquetes una construcción hecha con ellos para usuarios. La cobertura de `core/` debe mantenerse **≥85 % con ramas**; la simulación aleatoria siempre se prueba con semilla.
+La UI necesita bibliotecas Qt del sistema. En Linux headless, `QT_QPA_PLATFORM=offscreen` ejecuta las pruebas Qt si las bibliotecas nativas están presentes; si faltan, las pruebas correspondientes se omiten con una razón explícita. `test_webengine.py` prueba Chromium auténtico y **nunca** usa mocks; un skip indica validación visual *pendiente*, no éxito. `python -m ampu --self-test` falla en lugar de omitir. **No** integres los suplentes nativos del sandbox en este repositorio ni empaquetes una construcción hecha con ellos para usuarios. La cobertura de `core/` debe mantenerse **≥85 % con ramas**; la simulación aleatoria siempre se prueba con semilla.
 
 ## Organización y estilo
 
@@ -29,8 +29,8 @@ La UI necesita bibliotecas Qt del sistema. En Linux headless, `QT_QPA_PLATFORM=o
 
 ## Pantallas y paquetes
 
-Con un escritorio completo, ejecuta `python -m ampu`, visita las siete pantallas y abre una lección para verificar fórmulas, enlaces e imágenes. `python scripts/capturar_ui.py` actualiza las cuatro capturas PNG *de widgets reales* tras terminar los cálculos; evita maquetas o cifras falsas.
+Con un escritorio completo, ejecuta `python -m ampu`, visita las siete pantallas y abre una lección para verificar fórmulas, enlaces e imágenes. `python scripts/capturar_ui.py` actualiza las cuatro capturas PNG *de widgets reales* tras terminar los cálculos; evita maquetas o cifras falsas. Para la captura genuina de teoría ejecuta `python -m ampu --self-test --capture-theory docs/capturas/05_teoria_oscuro.png`: solo se escribe después de verificar con JavaScript KaTeX, figura, CSS y paleta.
 
-`python scripts/build_exe.py --onedir` prepara una carpeta de distribución y `python scripts/build_exe.py` el formato predeterminado de la plataforma. Construye y prueba **en cada SO de destino** (Windows, macOS, Linux); un build Linux no genera un ejecutable Windows. Confirma que se incluyan `QtWebEngineProcess`, la teoría, KaTeX y las fuentes y que la vista web funcione con las bibliotecas Qt nativas del equipo. `build/`, `dist/` y `.venv/` están ignorados.
+`python scripts/build_exe.py --onedir` prepara una carpeta y `python scripts/build_exe.py` el formato predeterminado. El script comprueba versión, recursos, `QtWebEngineProcess` y exportadores **dentro del artefacto**. Antes de publicar usa `python scripts/build_exe.py --gui-self-test` **en cada SO de destino** (Windows, macOS, Linux) y revisa visualmente la teoría. Un build Linux no genera un `.exe` Windows, y un `--verify-resources` satisfactorio **no** sustituye la autoprueba visual. `build/`, `dist/` y `.venv/` están ignorados.
 
 Antes de enviar un cambio: ejecuta `python -m compileall -q src/ampu scripts`, todas las pruebas, la validación SciPy y revisa que `git diff` no incluya cambios fuera de `AmPu 3.0/`.

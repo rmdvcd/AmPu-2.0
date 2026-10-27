@@ -10,9 +10,9 @@ El árbol original (`src/`, `test/`, `Libraries/`, etc.) es **solo de lectura**.
 | `MASFinito`, `MASInfinito`, `MEstratificado` | Tamaños con corrección finita, selección con semilla y asignación entera | `tests/test_muestreo.py` |
 | `GestionEncabezadoTabla` y modelos Swing | Tabla consultando el registro; columnas de parámetros, PMF/PDF, CDF, cola inclusiva, media, varianza y DE | `tests/test_distribuciones_*.py`, pruebas de UI |
 | `Graficos.java` / JFreeChart | Matplotlib QtAgg con curva PMF/PDF/CDF y región/evento resaltado, barra de herramientas | pruebas de UI y capturas |
-| `ExportarE.java` / POI | Servicio unificado XLSX/CSV/PNG/PDF (guardado único, formato y filas completas) | `tests/test_io.py` |
-| 12 HTML de distribuciones + 3 de muestreo | 57 Markdown con fórmulas LaTeX, ejemplos y referencias, 31 figuras nuevas y KaTeX/STIX locales | `tests/test_teoria.py` |
-| `Interfaz.java` | Navegación PySide6, controles dinámicos por metadatos y vistas para distribuciones, muestreo, descriptiva, inferencia, simulación | `tests/test_ui.py` |
+| `ExportarE.java` / POI | Servicio unificado XLSX/CSV/PNG/PDF (guardado único, formato, filas completas y texto pegado no ejecutable) | `tests/test_io.py`, `test_exportacion_segura.py`, `test_diagnostico.py` |
+| 12 HTML de distribuciones + 3 de muestreo | 57 Markdown con fórmulas LaTeX, ejemplos y referencias, 31 figuras nuevas y KaTeX/STIX locales | `tests/test_teoria.py`, `test_webengine.py` en escritorio nativo |
+| `Interfaz.java` | Navegación PySide6, controles dinámicos por metadatos, sesiones editables y vistas para distribuciones, muestreo, descriptiva, inferencia, simulación | `tests/test_ui.py`, `test_sesion_ui.py`, `test_empaquetado.py` |
 | Calculadora de Windows y OSK | Calculadora científica segura integrada; entrada y atajos Qt | pruebas de UI |
 
 ## Plan de implementación
@@ -22,6 +22,12 @@ El árbol original (`src/`, `test/`, `Libraries/`, etc.) es **solo de lectura**.
 3. Teoría nueva en Markdown/LaTeX con figuras reproducibles; motor KaTeX y fuentes empaquetados localmente (sin CDN).
 4. UI orientada a metadatos, cálculos en QThread, gráficos interactivos, validación y exportaciones comunes.
 5. Documentación, capturas reproducibles y script PyInstaller. Cada plataforma debe ejecutar PyInstaller en *su propio SO*: no existe compilación cruzada de Windows desde Linux.
+
+### Puertas de verificación antes de publicar
+
+- Desarrollo (cualquier SO): `pytest`, cobertura con ramas ≥85 %, `scripts/validar_contra_scipy.py`, `python -m ampu --verify-resources` y pruebas de sesión con tablas editadas.
+- Paquete (cada SO): `python scripts/build_exe.py --gui-self-test` construye y ejecuta **el artefacto**, valida recursos, exportaciones y teoría con Chromium/KaTeX reales. Fallar u omitir WebEngine **impide declarar validación visual**. Para inspección humana, `python -m ampu --self-test --capture-theory docs/capturas/05_teoria_oscuro.png` crea una captura solo cuando la página se haya cargado y comprobado.
+- En este sandbox únicamente se completaron pruebas QWidget con bibliotecas suplentes fuera del paquete y builds Linux `--onefile`/`--onedir` sin prueba visual; Windows y macOS exigen sus máquinas nativas. Una autoprueba de recursos no acredita compatibilidad de GUI ni portabilidad.
 
 ## Semántica estable de la API
 

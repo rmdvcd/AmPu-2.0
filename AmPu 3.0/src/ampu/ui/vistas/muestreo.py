@@ -2,7 +2,7 @@
 
 import secrets
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout, QLineEdit, QPlainTextEdit,
     QProgressBar, QPushButton, QScrollArea, QSpinBox, QSplitter, QVBoxLayout, QWidget,
@@ -22,7 +22,6 @@ class VistaMuestreo(VistaTrabajo):
         """Proporciona un único flujo: diseño → sorteo → tabla → exportación."""
         super().__init__(parent)
         self.ultimo: ResultadoDiseno | None = None
-        self.tabla_actual = "Selección"
         pagina = QVBoxLayout(self)
         pagina.setContentsMargins(25, 24, 25, 22)
         pagina.setSpacing(16)
@@ -168,7 +167,7 @@ class VistaMuestreo(VistaTrabajo):
         splitter.addWidget(table_card)
         splitter.setSizes([410, 240])
         self._metodo_cambiado()
-        QTimer.singleShot(200, self.calcular)
+        self.calcular_inicial(200)
 
     def _metodo_cambiado(self):
         """Muestra entradas pertinentes sin alterar las fórmulas del motor."""
@@ -219,28 +218,28 @@ class VistaMuestreo(VistaTrabajo):
         self.ultimo = salida
         self.resumen.setText(salida.resumen)
         self.grafico.barras(salida.etiquetas, salida.poblacion, salida.seleccion)
+        self.iniciar_hojas(salida.tablas)
         self.hojas.blockSignals(True)
         self.hojas.clear()
         self.hojas.addItems(salida.tablas)
-        self.hojas.setCurrentText("Selección")
+        hoja = self._hoja_pendiente if self._hoja_pendiente in salida.tablas else "Selección"
+        if hoja in salida.tablas:
+            self.hojas.setCurrentText(hoja)
+        self._hoja_pendiente = None
         self.hojas.blockSignals(False)
         self._mostrar_tabla()
         self.aviso.emit(f"Muestreo completado · {salida.resumen}")
 
     def _mostrar_tabla(self):
         """Alterna entre hoja de asignaciones y hoja de unidades."""
-        if self.ultimo is not None and self.hojas.currentText() in self.ultimo.tablas:
-            self.tabla.mostrar(self.ultimo.tablas[self.hojas.currentText()])
-            self.tabla_actual = self.hojas.currentText()
+        if self.ultimo is not None:
+            self.mostrar_hoja(self.tabla, self.hojas.currentText())
 
     def tablas_exportables(self) -> dict:
         """Conserva todas las hojas y las ediciones de la hoja visible."""
         if self.ultimo is None:
             return {}
-        tablas = dict(self.ultimo.tablas)
-        if self.tabla_actual in tablas:
-            tablas[self.tabla_actual] = self.tabla.datos()
-        return tablas
+        return self.hojas_exportables(self.tabla)
 
     def resumen_exportable(self) -> str:
         """Texto para el informe PDF del diseño."""
@@ -254,12 +253,14 @@ class VistaMuestreo(VistaTrabajo):
 
     def estado(self) -> dict:
         """Serializa diseño, entradas, semilla y todas las tablas."""
+        tablas = ({k: v.to_dict(orient="list") for k, v in self.tablas_exportables().items()}
+                  if self.ultimo else self._hojas_pendientes)
         return {"metodo": self.metodo.currentData(), "N": self.N.value(), "n": self.n.value(),
                 "semilla": self.semilla.value(), "estratos": self.estratos.toPlainText(),
                 "poblacion": self.poblacion.text(), "n_por_grupo": self.por_grupo.value(),
                 "auto": self.auto.isChecked(), "p": self.p.value(), "error": self.error.value(),
-                "confianza": self.confianza.value(),
-                "tablas": {k: v.to_dict(orient="list") for k, v in self.tablas_exportables().items()}}
+                "confianza": self.confianza.value(), "hoja": self.hojas.currentText() or self._hoja_pendiente,
+                "tablas": tablas}
 
     def restaurar(self, d: dict):
         """Restaura controles y reproduce el sorteo guardado."""
@@ -275,4 +276,7 @@ class VistaMuestreo(VistaTrabajo):
         for campo in ("p", "error", "confianza"):
             getattr(self, campo).setValue(float(d.get(campo, getattr(self, campo).value())))
         self.auto.setChecked(bool(d.get("auto", False)))
-        QTimer.singleShot(200, self.calcular)
+        self.limpiar_resultado()
+        self._hojas_pendientes = d.get("tablas") if isinstance(d.get("tablas"), dict) else {}
+        self._hoja_pendiente = d.get("hoja")
+        self.recalcular_restaurado()

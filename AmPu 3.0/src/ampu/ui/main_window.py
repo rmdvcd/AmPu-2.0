@@ -186,11 +186,17 @@ class VentanaPrincipal(QMainWindow):
     def cambiar(self, clave: str):
         """Selecciona módulo y destaca su botón en la navegación."""
         if clave == "teoria" and clave not in self.vistas:
-            from ampu.ui.vistas.teoria import VistaTeoria  # WebEngine carga bajo demanda
-            self.vistas[clave] = VistaTeoria(self.tema_actual)
-            self.pila.addWidget(self.vistas[clave])
+            try:
+                from ampu.ui.vistas.teoria import VistaTeoria  # WebEngine carga bajo demanda
+                self.vistas[clave] = VistaTeoria(self.tema_actual)
+                self.pila.addWidget(self.vistas[clave])
+            except Exception:
+                LOG.exception("No se pudo iniciar QtWebEngine")
+                self._error("No se pudo abrir Teoría. Instala las bibliotecas nativas de QtWebEngine "
+                            "(NSS, X11, OpenGL) indicadas en el README.")
+                return False
         if clave not in self.vistas:
-            return
+            return False
         self.actual = clave
         self.pila.setCurrentWidget(self.vistas[clave])
         for nombre, boton in self.botones.items():
@@ -198,12 +204,13 @@ class VentanaPrincipal(QMainWindow):
             boton.style().unpolish(boton)
             boton.style().polish(boton)
         self.mensaje(f"{next(t for k, _, t in PAGINAS if k == clave)} · AmPu 3.0")
+        return True
 
     def abrir_teoria(self, clave: str):
         """Navega a la lección de un módulo sin depender de HTML heredado."""
         try:
-            self.cambiar("teoria")
-            self.vistas["teoria"].seleccionar(clave)
+            if self.cambiar("teoria"):
+                self.vistas["teoria"].seleccionar(clave)
         except Exception:
             LOG.exception("No se pudo cargar teoría %s", clave)
             self._error("La lección no se pudo abrir. Consulta el registro de errores.")
@@ -292,8 +299,14 @@ class VentanaPrincipal(QMainWindow):
             return
         try:
             estado = io.cargar(origen)
+            vistas = estado.get("vistas", {})
+            if (estado.get("tema", "claro") not in ("claro", "oscuro")
+                    or not isinstance(vistas, dict)
+                    or any(not isinstance(datos, dict) for datos in vistas.values())
+                    or not isinstance(estado.get("modulo", "distribuciones"), str)):
+                raise ValueError("El contenido de la sesión no sigue el esquema de la interfaz.")
             self.aplicar_tema(estado.get("tema", "claro"))
-            for clave, datos in estado.get("vistas", {}).items():
+            for clave, datos in vistas.items():
                 if clave == "teoria" and clave not in self.vistas:
                     self.cambiar("teoria")
                 if clave in self.vistas:

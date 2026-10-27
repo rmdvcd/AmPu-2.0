@@ -74,6 +74,7 @@ class Grafico(QWidget):
 
     def vacio(self):
         """Representa estado inicial ligero, sin muestras inventadas."""
+        self._ultimo = None
         ax = self._ejes()
         ax.text(.5, .5, "Los resultados aparecerán aquí", transform=ax.transAxes,
                 ha="center", va="center", fontsize=12, color="#7894A8")

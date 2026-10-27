@@ -10,7 +10,7 @@
 
 ## Instalar y ejecutar
 
-Se necesita **Python 3.12 o posterior**, un sistema con entorno gráfico y las bibliotecas nativas habituales de Qt/QtWebEngine. En Linux instale las bibliotecas gráficas de su distribución, entre ellas OpenGL/EGL, `libxkbcommon`, D-Bus, NSS y las dependencias X11 de QtWebEngine. El entorno de evaluación minimalista no trae todas estas bibliotecas de serie; **no se requieren rutas exclusivas de Windows ni acceso a Internet al ejecutar la aplicación**. En macOS/Windows basta con una instalación normal de Python y el entorno de escritorio del sistema.
+Se necesita **Python 3.12 o posterior**, un sistema con entorno gráfico y las bibliotecas nativas habituales de Qt/QtWebEngine. En Linux instale las bibliotecas gráficas de su distribución: OpenGL/EGL, `libxkbcommon`, D-Bus, NSS/NSPR, ALSA y dependencias X11/XCB/GBM de QtWebEngine (p. ej., en Debian/Ubuntu: `libgl1 libegl1 libxkbcommon0 libdbus-1-3 libnss3 libnspr4 libasound2 libgbm1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxtst6 libxkbfile1`). El entorno de evaluación minimalista no trae todas estas bibliotecas de serie; **no se requieren rutas exclusivas de Windows ni acceso a Internet al ejecutar la aplicación**. En macOS/Windows basta con una instalación normal de Python y el entorno de escritorio del sistema.
 
 Desde esta carpeta (`AmPu 3.0/`):
 
@@ -31,7 +31,7 @@ También se instala el comando `ampu`. `python -m ampu --version` funciona inclu
 2. En **Muestreo** define población, tamaño y semilla, o activa el cálculo automático del tamaño; compara el diseño visualmente y abre las hojas de asignación/selección.
 3. En **Descriptiva**, **Probabilidad**, **Inferencia** o **Simulación** pega números separados por coma/espacio, pulsa la acción principal y explora resultados y gráfico.
 4. Usa **Abrir teoría** para ver fórmulas, ejemplos resueltos, figuras y fuentes; filtra lecciones en **Teoría**. Los atajos `Ctrl+1…7` cambian de módulo, `F1` abre la lección correspondiente y `Ctrl+L` abre la calculadora científica.
-5. **Exportar** produce XLSX (todas las hojas), CSV UTF-8 (hoja visible), PNG (gráfico) o PDF (informe con fórmula, tabla y figura). **Guardar sesión** conserva entradas, tablas, semilla y tema como JSON versionado; **Abrir** restaura la sesión local.
+5. **Exportar** produce XLSX (todas las hojas), CSV UTF-8 (hoja visible), PNG (gráfico) o PDF (informe con fórmula, tabla y figura). **Guardar sesión** conserva entradas, tablas editadas de **todas** las hojas, hoja activa, semilla y tema como JSON versionado; **Abrir** restaura la sesión local. Las celdas editadas son anotaciones exportables: **no cambian** las estadísticas ni el gráfico, que se recalculan desde entradas y semilla. La tabla muestra números abreviados con valor exacto en el tooltip; el CSV conserva la precisión de Python y XLSX se rige por el límite de ~15 dígitos de Excel. Texto pegado con prefijos de fórmula se exporta como texto, nunca como una fórmula ejecutable.
 
 ## Cobertura funcional
 
@@ -50,20 +50,27 @@ La **UI no implementa las fórmulas**: prepara entradas, envía trabajos a hilos
 python -m pytest
 python -m pytest --cov=ampu.core --cov-branch --cov-report=term-missing
 python scripts/validar_contra_scipy.py
+python -m ampu --verify-resources  # lecciones, figuras, fuentes, exportaciones y sesión; no abre Qt
+python -m ampu --self-test         # requiere escritorio completo; comprueba Chromium, KaTeX, imagen y tema
 ```
 
-Verificado en Python **3.12.11**, NumPy **2.5.4**, SciPy **1.18.1**, pandas **3.1.0**, PySide6 **6.12.0**: **114 tests pasan**, **92 % de cobertura del núcleo con ramas** (objetivo ≥85 %) y **121/121** comparaciones contra SciPy. Las pruebas Qt se ejecutaron con la plataforma offscreen y suplentes gráficos **solo de pruebas** porque esta imagen Linux carece de algunas bibliotecas nativas; los suplentes **no forman parte del proyecto ni del paquete**. La vista `QWebEngineView` requiere verificar su ejecución visual en un sistema con NSS/X11/QtWebEngine completos. Si el entorno carece de `libGL.so.1`/`libEGL.so.1`, la prueba Qt se omite limpiamente; el núcleo y el HTML se siguen probando.
+Verificado en Python **3.12.11**, NumPy **2.5.4**, SciPy **1.18.1**, pandas **3.1.0**, PySide6 **6.12.0**: **123 pruebas aprobadas**, **1 prueba WebEngine omitida por falta de bibliotecas NSS/X11**, **92 % de cobertura del núcleo con ramas** (objetivo ≥85 %) y **121/121** comparaciones contra SciPy. Las pruebas de QWidget se ejecutaron en plataforma offscreen con suplentes gráficos **solo de pruebas**; estos **no forman parte del proyecto ni de sus ejecutables**. `tests/test_webengine.py` usa Chromium real, nunca mocks: se omite solo si no puede importar sus bibliotecas nativas; en un equipo preparado, un error de fórmula, CSS, imagen o paleta hará fallar la prueba. **La autoprueba `--self-test` nunca omite WebEngine**: falla con código no cero si la vista no renderiza. En este sandbox minimalista no se ha podido ejecutar esa autoprueba visual; no se confunde una prueba omitida con una validación exitosa.
 
 Los ejemplos originales Java se comparan en [`tests/test_paridad_java.py`](tests/test_paridad_java.py). Los resultados que eran erróneos **no se copian**: consulta [MIGRACION.md](MIGRACION.md) para fórmulas, casos y diferencias. La ubicación de archivos y alcance se explican en [PLAN.md](PLAN.md). Las contribuciones y convenciones están en [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Empaquetar
 
 ```bash
-python scripts/build_exe.py              # un archivo en Linux/Windows, .app en macOS
-python scripts/build_exe.py --onedir     # carpeta portable en Linux/Windows
+python scripts/build_exe.py                 # archivo en Linux/Windows, .app en macOS
+python scripts/build_exe.py --onedir        # carpeta en Linux/Windows
+python scripts/build_exe.py --gui-self-test # NECESITA escritorio nativo completo
+# O para revisar el renderizado y obtener una captura real (no sintética):
+python -m ampu --self-test --capture-theory docs/capturas/05_teoria_oscuro.png
 ```
 
-Cada sistema **debe compilar en el propio sistema**: PyInstaller no crea un `.exe` de Windows desde Linux. El script incorpora las lecciones, imágenes, KaTeX, fuentes, QSS, icono y `QtWebEngineProcess` mediante hooks; usa rutas relativas a `__file__`. La carpeta `dist/` se ignora. Una compilación Linux `--onedir` se completó con Python 3.12 y se comprobó `dist/AmPu3/AmPu3 --version`; este sandbox no contiene todas las dependencias gráficas del sistema, por lo que **el paquete Linux de este sandbox no es una distribución portable verificada visualmente**. Ejecuta el empaquetado y la prueba de la lección web en un equipo con las bibliotecas nativas completas antes de publicar.
+Cada sistema **debe compilar en el propio sistema**: PyInstaller no crea un `.exe` de Windows desde Linux. El script incorpora lecciones, imágenes, KaTeX, fuentes, QSS, iconos nativos ICO/ICNS y `QtWebEngineProcess` con hooks; usa rutas relativas a `__file__`. Tras compilar ejecuta el **binario generado** con `--version` y `--verify-resources` y falla si faltan el helper/recursos Chromium o si una exportación/sesión no funciona. `--gui-self-test` añade una prueba estricta de WebEngine, fórmulas, CSS, figura local y tema oscuro en el **ejecutable**, no en el Python de desarrollo. `dist/` se ignora; conserva el ejecutable solo después de probarlo en un escritorio nativo.
+
+En este sandbox se construyeron y pasaron la autoprueba **ambos modos Linux** (`--onefile` y `--onedir`), sin incluir suplentes gráficos; PyInstaller advirtió que faltan dependencias nativas (`libnss3`, GL/EGL, X11, etc.). **No se ha verificado el funcionamiento visual de esos ejecutables ni se han compilado Windows/macOS aquí**. Para dar por publicable cada artefacto, ejecuta `python scripts/build_exe.py --gui-self-test` *en cada SO de destino* con sus dependencias gráficas instaladas y revisa la captura con `--capture-theory`. Estas pruebas de escritorio son una puerta de publicación, no una afirmación de portabilidad desde Linux minimalista.
 
 ## Estructura
 

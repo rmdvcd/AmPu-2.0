@@ -32,7 +32,7 @@ ampu = "ampu.app:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ampu = ["docs/teoria/*.md", "docs/imagenes/*.png", "docs/render/*.html", "docs/render/*.js", "docs/render/*.css", "docs/render/fonts/*.woff2", "docs/render/LICENSE.katex", "docs/render/LICENSE.stix", "ui/estilos/*.qss", "ui/recursos/*.svg", "ui/recursos/*.png"]
+ampu = ["docs/teoria/*.md", "docs/imagenes/*.png", "docs/render/*.html", "docs/render/*.js", "docs/render/*.css", "docs/render/fonts/*.woff2", "docs/render/LICENSE.katex", "docs/render/LICENSE.stix", "ui/estilos/*.qss", "ui/recursos/*.svg", "ui/recursos/*.png", "ui/recursos/*.ico", "ui/recursos/*.icns"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

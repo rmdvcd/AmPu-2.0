@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox, QHBoxLayout, QPlainTextEdit, QProgressBar, QPushButton,
     QSplitter, QVBoxLayout, QWidget,
@@ -107,7 +107,7 @@ class VistaDescriptiva(VistaTrabajo):
         tl.addWidget(self.tabla)
         split.addWidget(card)
         split.setSizes([410, 230])
-        QTimer.singleShot(260, self.calcular)
+        self.calcular_inicial(260)
 
     def calcular(self):
         """Despacha la carga de datos a un hilo de trabajo."""
@@ -132,9 +132,13 @@ class VistaDescriptiva(VistaTrabajo):
                                     resumen.coeficiente_variacion if resumen.coeficiente_variacion is not None else float("nan"))
         self.nota.setText(f"{resumen.n} observaciones · cuartiles {resumen.q1:g} y {resumen.q3:g}"
                           + (f" · Pearson r = {corr:.4g}" if corr is not None else " · agrega Y para un diagrama de dispersión."))
+        self.iniciar_hojas(tablas)
         self.hojas.blockSignals(True)
         self.hojas.clear()
         self.hojas.addItems(tablas)
+        if self._hoja_pendiente in tablas:
+            self.hojas.setCurrentText(self._hoja_pendiente)
+        self._hoja_pendiente = None
         self.hojas.blockSignals(False)
         self._tabla()
         self._dibujar()
@@ -142,8 +146,8 @@ class VistaDescriptiva(VistaTrabajo):
 
     def _tabla(self):
         """Alterna hojas de la misma operación."""
-        if self.ultimo and self.hojas.currentText() in self.ultimo[2]:
-            self.tabla.mostrar(self.ultimo[2][self.hojas.currentText()])
+        if self.ultimo:
+            self.mostrar_hoja(self.tabla, self.hojas.currentText())
 
     def _dibujar(self):
         """Dibuja serie elegida cuando existen datos."""
@@ -158,10 +162,7 @@ class VistaDescriptiva(VistaTrabajo):
         """Incluye datos originales, resumen y frecuencias."""
         if not self.ultimo:
             return {}
-        tablas = dict(self.ultimo[2])
-        if self.hojas.currentText():
-            tablas[self.hojas.currentText()] = self.tabla.datos()
-        return tablas
+        return self.hojas_exportables(self.tabla)
 
     def resumen_exportable(self) -> str:
         """Lectura no causal y concisa para el reporte."""
@@ -176,12 +177,17 @@ class VistaDescriptiva(VistaTrabajo):
 
     def estado(self) -> dict:
         """Datos pegados y gráficos seleccionados en la sesión."""
+        tablas = ({k: v.to_dict(orient="list") for k, v in self.tablas_exportables().items()}
+                  if self.ultimo else self._hojas_pendientes)
         return {"x": self.x.toPlainText(), "y": self.y.toPlainText(), "modo": self.modo.currentText(),
-                "tablas": {k: v.to_dict(orient="list") for k, v in self.tablas_exportables().items()}}
+                "hoja": self.hojas.currentText() or self._hoja_pendiente, "tablas": tablas}
 
     def restaurar(self, d: dict):
         """Restaura entradas y regenera resultados."""
         self.x.setPlainText(d.get("x", ""))
         self.y.setPlainText(d.get("y", ""))
         self.modo.setCurrentText(d.get("modo", "Histograma"))
-        QTimer.singleShot(200, self.calcular)
+        self.limpiar_resultado()
+        self._hojas_pendientes = d.get("tablas") if isinstance(d.get("tablas"), dict) else {}
+        self._hoja_pendiente = d.get("hoja")
+        self.recalcular_restaurado()

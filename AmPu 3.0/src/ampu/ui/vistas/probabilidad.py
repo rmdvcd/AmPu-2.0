@@ -168,7 +168,7 @@ class VistaProbabilidad(VistaTrabajo):
         """Actualiza tabla, resultado y gráfico."""
         self.ultimo = salida
         self.conclusion.setText(salida[0])
-        self.tabla.mostrar(salida[1])
+        self.mostrar_tabla_restaurada(self.tabla, salida[1])
         self.grafico.serie(salida[2], salida[3], self.tipo.currentText())
         self.aviso.emit("Resultado disponible para Excel, CSV y PDF.")
 
@@ -189,7 +189,7 @@ class VistaProbabilidad(VistaTrabajo):
         return {"tipo": self.tipo.currentData(), "n": self.n.value(), "k": self.k.value(),
                 "a": self.a.value(), "b": self.b.value(), "priori": self.priores.text(),
                 "ver": self.verosimilitudes.text(), "t": self.t.value(),
-                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else None}
+                "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else self._tabla_pendiente}
 
     def restaurar(self, d: dict):
         """Reconstruye formulario de probabilidad."""
@@ -199,4 +199,9 @@ class VistaProbabilidad(VistaTrabajo):
         self.priores.setText(d.get("priori", "0.4, 0.6"))
         self.verosimilitudes.setText(d.get("ver", "0.5, 0.1"))
         if d.get("tabla") is not None:
-            self.calcular()
+            self.limpiar_resultado()
+            self._tabla_pendiente = d["tabla"]
+            self.recalcular_restaurado()
+        else:
+            self.limpiar_resultado()
+            self.conclusion.setText("Configura y resuelve una identidad o consulta.")
