@@ -1,6 +1,6 @@
 # Registro de cambios
 
-## 3.0.0 · 2026-10-27
+## 3.0.0 · 2026-10-26
 
 ### Nueva implementación
 
