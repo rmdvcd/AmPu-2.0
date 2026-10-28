@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices, QShortcut, QKeySequence
-from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings, QWebEngineUrlRequestInterceptor
+from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings, QWebEngineUrlRequestInterceptor
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
@@ -24,9 +24,11 @@ class PaginaTeoria(QWebEnginePage):
     """Abre enlaces voluntarios en el navegador del SO; la vista sigue offline."""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.bloqueo_red = BloqueoRed(self)
-        self.profile().setUrlRequestInterceptor(self.bloqueo_red)
+        # Perfil aislado por página: un asistente no pisa el interceptor de teoría.
+        self._perfil = QWebEngineProfile(parent)
+        super().__init__(self._perfil, parent)
+        self.bloqueo_red = BloqueoRed(self._perfil)
+        self._perfil.setUrlRequestInterceptor(self.bloqueo_red)
 
     def acceptNavigationRequest(self, url, tipo, es_marco_principal):
         """Admite HTML local y anclas; rechaza navegación remota dentro de Qt."""
@@ -47,6 +49,7 @@ class VistaTeoria(QWidget):
         super().__init__(parent)
         self.tema_actual = tema
         self.zoom = 1.0
+        self.escala_interfaz = 1.0
         root = QVBoxLayout(self)
         root.setContentsMargins(25, 24, 25, 20)
         root.setSpacing(12)
@@ -55,33 +58,39 @@ class VistaTeoria(QWidget):
         linea = QHBoxLayout()
         linea.addWidget(etiqueta("LECCIÓN", "Eyebrow"))
         self.selector = QComboBox()
+        self.selector.setAccessibleName("Seleccionar lección teórica")
         for clave, titulo in listar_teoria():
             self.selector.addItem(titulo, clave)
         self.selector.setMinimumWidth(220)
         self.selector.currentIndexChanged.connect(self._cargar)
         linea.addWidget(self.selector, 2)
         self.busqueda = QLineEdit()
+        self.busqueda.setAccessibleName("Buscar texto en la lección actual")
         self.busqueda.setPlaceholderText("Buscar dentro de la lección…  Ctrl+F")
         self.busqueda.returnPressed.connect(self.buscar)
         linea.addWidget(self.busqueda, 1)
         prev = QPushButton("↑")
+        prev.setAccessibleName("Ir al resultado anterior en teoría")
         prev.setObjectName("Quiet")
         prev.setToolTip("Resultado anterior")
         prev.clicked.connect(self.buscar_anterior)
         linea.addWidget(prev)
         next_ = QPushButton("↓")
+        next_.setAccessibleName("Ir al siguiente resultado en teoría")
         next_.setObjectName("Quiet")
         next_.setToolTip("Resultado siguiente")
         next_.clicked.connect(self.buscar)
         linea.addWidget(next_)
         for texto, paso in (("A−", -.1), ("A+", .1)):
             boton = QPushButton(texto)
+            boton.setAccessibleName("Reducir zoom de teoría" if paso < 0 else "Ampliar zoom de teoría")
             boton.setObjectName("Secondary")
             boton.clicked.connect(lambda checked=False, d=paso: self.zoom_cambiar(d))
             linea.addWidget(boton)
         bar.addLayout(linea)
         root.addWidget(controls)
         self.navegador = QWebEngineView()
+        self.navegador.setAccessibleName("Contenido de teoría con fórmulas MathML y figuras descritas")
         self.navegador.setPage(PaginaTeoria(self.navegador))
         self.navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
         self.navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
@@ -89,8 +98,6 @@ class VistaTeoria(QWidget):
         self.navegador.setContextMenuPolicy(Qt.DefaultContextMenu)
         root.addWidget(self.navegador, 1)
         QShortcut(QKeySequence.Find, self, activated=self.busqueda.setFocus)
-        QShortcut(QKeySequence.ZoomIn, self, activated=lambda: self.zoom_cambiar(.1))
-        QShortcut(QKeySequence.ZoomOut, self, activated=lambda: self.zoom_cambiar(-.1))
         self._cargar()
 
     def _cargar(self):
@@ -123,10 +130,14 @@ class VistaTeoria(QWidget):
         """Busca coincidencia anterior del texto del usuario."""
         self.navegador.findText(self.busqueda.text(), QWebEnginePage.FindFlag.FindBackward)
 
+    def ajustar_escala(self, escala: float):
+        self.escala_interfaz = escala
+        self.navegador.setZoomFactor(min(3.0, self.zoom * escala))
+
     def zoom_cambiar(self, delta: float):
-        """Zoom persistente dentro de márgenes de legibilidad."""
+        """Zoom propio de teoría, combinado con la ampliación global de la UI."""
         self.zoom = max(.65, min(2.0, round(self.zoom + delta, 2)))
-        self.navegador.setZoomFactor(self.zoom)
+        self.navegador.setZoomFactor(min(3.0, self.zoom * self.escala_interfaz))
 
     def estado(self) -> dict:
         """Lección y factor de zoom actual."""
@@ -136,4 +147,4 @@ class VistaTeoria(QWidget):
         """Carga lección y escala previamente guardadas."""
         self.seleccionar(d.get("clave", "binomial"))
         self.zoom = max(.65, min(2, float(d.get("zoom", 1))))
-        self.navegador.setZoomFactor(self.zoom)
+        self.navegador.setZoomFactor(min(3.0, self.zoom * self.escala_interfaz))

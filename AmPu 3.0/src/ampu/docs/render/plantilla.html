@@ -9,8 +9,9 @@
     @font-face {font-family:STIX;src:url('../render/fonts/stix-two-math-latin-400-normal.woff2') format('woff2');font-display:swap}
     :root {color-scheme:light;--fondo:#f4f7fb;--papel:#fff;--texto:#192c47;--muted:#465b73;--borde:#d8e2ec;--acento:#087c75;--codigo:#edf5f6;--sombra:0 6px 28px rgba(20,40,70,.06)}
     :root[data-tema="oscuro"]{color-scheme:dark;--fondo:#101b2d;--papel:#1b2940;--texto:#f0f5fc;--muted:#bacbdd;--borde:#3d516b;--acento:#7de9dc;--codigo:#263850;--sombra:none}
+    :root[data-tema="contraste"]{color-scheme:dark;--fondo:#000;--papel:#000;--texto:#fff;--muted:#fff;--borde:#fff;--acento:#ffdf00;--codigo:#151515;--sombra:none}
     *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
+    html{scroll-behavior:auto}
     body{margin:0;background:var(--fondo);color:var(--texto);font:17px/1.78 Georgia,STIX,serif}
     a{color:var(--acento);text-decoration:none}a:hover{text-decoration:underline}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--acento);outline-offset:3px}
     .layout{display:grid;grid-template-columns:minmax(200px,242px) minmax(0,1fr);min-height:100vh}

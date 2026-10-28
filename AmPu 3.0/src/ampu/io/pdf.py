@@ -54,8 +54,8 @@ def exportar_pdf(
             iw, ih = lector.getSize()
             altura = min(66, ih * ancho / iw)
             historia.append(Image(imagen, width=altura * iw / ih, height=altura))
-        else:
-            historia.append(Paragraph(escape(formula).replace("\n", " "), estilos["Code"]))
+        # La imagen nunca es la única representación: texto lineal seleccionable.
+        historia.append(Paragraph("Código LaTeX: " + escape(formula).replace("\n", " "), estilos["Code"]))
         historia.append(Spacer(1, 10))
     if figura is not None:
         memoria = BytesIO()

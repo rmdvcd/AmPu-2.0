@@ -84,6 +84,7 @@ class VistaSimulacion(VistaTrabajo):
         fila.addWidget(card)
         l.addWidget(etiqueta("EXPERIMENTO", "Eyebrow"))
         self.tipo = QComboBox()
+        self.tipo.setAccessibleName("Tipo de experimento o simulación")
         for nombre, clave in (("Estimar π", "pi"), ("Integral de x² en [0,1]", "integral"),
                               ("Generar muestra", "muestra"), ("Ajustar distribución", "ajuste"),
                               ("QQ-plot de datos", "qq")):
@@ -94,6 +95,7 @@ class VistaSimulacion(VistaTrabajo):
         col = QVBoxLayout()
         col.addWidget(etiqueta("Simulaciones n", "Muted"))
         self.n = QSpinBox()
+        self.n.setAccessibleName("Número de simulaciones n")
         self.n.setRange(2, 1_000_000)
         self.n.setValue(10_000)
         col.addWidget(self.n)
@@ -101,6 +103,7 @@ class VistaSimulacion(VistaTrabajo):
         col = QVBoxLayout()
         col.addWidget(etiqueta("Semilla", "Muted"))
         self.semilla = campo_semilla()
+        self.semilla.setAccessibleName("Semilla de experimento reproducible")
         col.addWidget(self.semilla)
         campos.addLayout(col)
         l.addLayout(campos)
@@ -116,6 +119,7 @@ class VistaSimulacion(VistaTrabajo):
         l.addLayout(fila_sem)
         l.addWidget(etiqueta("DISTRIBUCIÓN", "Eyebrow"))
         self.modelo = QComboBox()
+        self.modelo.setAccessibleName("Distribución para simular o ajustar")
         self.modelo.currentIndexChanged.connect(self._cambiar_modelo)
         l.addWidget(self.modelo)
         sc = QScrollArea()
@@ -126,6 +130,7 @@ class VistaSimulacion(VistaTrabajo):
         l.addWidget(sc, 1)
         l.addWidget(etiqueta("DATOS PARA AJUSTE / QQ-PLOT", "Eyebrow"))
         self.datos = QPlainTextEdit("1.2, 2.0, 0.4, 1.1, 0.7, 2.5, 1.3, 0.9, 1.8, 2.1, 1.5, 0.6")
+        self.datos.setAccessibleName("Datos para ajuste o QQ plot")
         self.datos.setFixedHeight(86)
         self.datos.setPlaceholderText("Pega datos separados por comas...")
         l.addWidget(self.datos)
@@ -147,6 +152,7 @@ class VistaSimulacion(VistaTrabajo):
         r.setContentsMargins(0, 0, 0, 0)
         r.setSpacing(11)
         fila.addWidget(derecha, 1)
+        self.configurar_adaptacion(fila, card)
         self.resumen = etiqueta("Selecciona un experimento y ejecuta una simulación reproducible.", "Note")
         r.addWidget(self.resumen)
         separador = QSplitter(Qt.Vertical)
@@ -165,6 +171,7 @@ class VistaSimulacion(VistaTrabajo):
         separador.setSizes([425, 220])
         self._tipo()
         self.calcular_inicial(260)
+        self.vigilar_entradas()
 
     def _tipo(self):
         """Filtra modelos ajustables y bloquea entradas que no corresponden."""
@@ -251,7 +258,7 @@ class VistaSimulacion(VistaTrabajo):
     def estado(self) -> dict:
         """Conserva entrada, parámetros, resultado y semilla de la experiencia."""
         return {"tipo": self.tipo.currentData(), "modelo": self.modelo.currentData(),
-                "parametros": self.formulario.valores() if self.modelo.currentData() else {},
+                "parametros": self.formulario.estado() if self.modelo.currentData() else {},
                 "n": self.n.value(), "semilla": self.semilla.value(), "datos": self.datos.toPlainText(),
                 "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo else self._tabla_pendiente}
 

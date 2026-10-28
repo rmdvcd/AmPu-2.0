@@ -25,3 +25,4 @@ def test_render_chromium_real_offline_claro_y_oscuro():
     assert reporte["webengine"] == "correcto"
     assert reporte["formulas"] >= 3
     assert reporte["imagenes"] >= 1
+    assert reporte["asistente_mathml"] and reporte["asistente_contraste"] == "correcto"

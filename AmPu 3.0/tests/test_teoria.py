@@ -31,7 +31,7 @@ def test_todas_las_tecnicas_y_plantilla():
         assert "## Referencias" in texto
         assert "![" in texto
         assert not any(ord(c) < 32 and c != "\n" for c in texto), clave
-    for tema in ("claro", "oscuro"):
+    for tema in ("claro", "oscuro", "contraste"):
         html = renderizar("binomial", tema)
         assert f'data-tema="{tema}"' in html
         assert "auto-render.min.js" in html and "katex.min.js" in html
@@ -43,6 +43,8 @@ def test_todas_las_tecnicas_y_plantilla():
         assert len(html) > 5_000
     for nombre in ("katex.min.js", "katex.min.css", "auto-render.min.js", "fonts/KaTeX_Main-Regular.woff2", "fonts/stix-two-math-latin-400-normal.woff2", "LICENSE.katex", "LICENSE.stix"):
         assert (PLANTILLA.parent / nombre).exists()
-    assert "https://cdn" not in PLANTILLA.read_text(encoding="utf-8")
+    plantilla = PLANTILLA.read_text(encoding="utf-8")
+    assert "https://cdn" not in plantilla
+    assert "scroll-behavior:smooth" not in plantilla  # sin animación obligatoria
     with pytest.raises(ValueError):
         leer_teoria("../src/Clases/Funciones")
