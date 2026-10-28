@@ -1,0 +1,56 @@
+/* Paleta de alto contraste: negro, blanco, amarillo (no depende de la pantalla). */
+QMainWindow, QWidget, QWidget#Raiz, QStackedWidget, QSplitter, QFrame,
+QFrame#Sidebar, QFrame#Card, QFrame#FormCard, QFrame#ChartCard,
+QFrame#KpiCard, QFrame#SidebarBottom { background:#000000; color:#FFFFFF; border-color:#FFFFFF; }
+QFrame#Sidebar, QFrame#Card, QFrame#FormCard, QFrame#ChartCard,
+QFrame#KpiCard, QFrame#SidebarBottom { border:2px solid #FFFFFF; }
+QLabel, QLabel#Brand, QLabel#BrandSub, QLabel#SidebarInfo,
+QLabel#H1, QLabel#H2, QLabel#Muted, QLabel#KpiNumber, QLabel#KpiLabel,
+QLabel#Note { color:#FFFFFF; }
+QLabel#Eyebrow, QLabel#SidebarHeading, QLabel#Error,
+QLabel#Success { color:#FFDF00; }
+QPushButton#NavButton, QPushButton#Quiet, QPushButton#Secondary {
+    background:#000000; color:#FFFFFF; border:2px solid #FFFFFF;
+}
+QPushButton#NavActive, QPushButton#Primary, QToolButton#Primary {
+    background:#FFDF00; color:#000000; border:2px solid #FFDF00;
+}
+QPushButton#NavButton:hover, QPushButton#Quiet:hover, QPushButton#Secondary:hover,
+QPushButton#Primary:hover, QToolButton#Primary:hover {
+    background:#FFFFFF; color:#000000; border-color:#FFFFFF;
+}
+QPushButton#Primary:disabled, QToolButton#Primary:disabled,
+QPushButton#Secondary:disabled, QPushButton#Quiet:disabled {
+    background:#292929; border:2px solid #AAAAAA; color:#CCCCCC;
+}
+QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox, QPlainTextEdit,
+QComboBox QAbstractItemView { background:#000000; color:#FFFFFF; border:2px solid #FFFFFF;
+    selection-background-color:#FFDF00; selection-color:#000000; }
+QTableWidget, QTableView, QListWidget {
+    background:#000000; alternate-background-color:#202020; color:#FFFFFF;
+    border:2px solid #FFFFFF; gridline-color:#FFFFFF;
+    selection-background-color:#FFDF00; selection-color:#000000;
+}
+QHeaderView::section { background:#000000; color:#FFFFFF; border:1px solid #FFFFFF; }
+QTabBar::tab { background:#000000; color:#FFFFFF; border:2px solid #FFFFFF; padding:9px 14px; }
+QTabBar::tab:selected { background:#FFDF00; color:#000000; border:2px solid #FFDF00; }
+QMenuBar, QMenu, QStatusBar, QToolTip {
+    background:#000000; color:#FFFFFF; border:2px solid #FFFFFF;
+}
+QMenu::item:selected, QMenuBar::item:selected, QMenuBar::item:pressed {
+    background:#FFDF00; color:#000000;
+}
+QMenu::item:disabled { color:#CCCCCC; }
+QProgressBar { background:#000000; border:2px solid #FFFFFF; }
+QProgressBar::chunk { background:#FFDF00; }
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal { background:#FFFFFF; }
+QSplitter::handle { background:#FFFFFF; }
+QCheckBox::indicator { border:2px solid #FFFFFF; background:#000000; }
+QCheckBox::indicator:checked { background:#FFDF00; }
+QPushButton#NavButton:focus, QPushButton#NavActive:focus,
+QPushButton#Primary:focus, QToolButton#Primary:focus, QPushButton#Quiet:focus,
+QPushButton#Secondary:focus, QComboBox:focus, QLineEdit:focus,
+QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTableWidget:focus,
+QTableView:focus, QListWidget:focus, QCheckBox:focus, QTabBar::tab:focus {
+    border:3px solid #FFDF00;
+}

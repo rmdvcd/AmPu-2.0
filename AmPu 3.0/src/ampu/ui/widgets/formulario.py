@@ -22,12 +22,29 @@ class FormularioDistribucion(QWidget):
         self.formulario.setSpacing(10)
         self.controles: dict[str, QWidget] = {}
         self.modelo: Distribucion | None = None
+        self._escala = 1.0
+
+    def ajustar_escala(self, escala: float):
+        """Evita que el scroll comprima editores por debajo de su tamaño útil."""
+        self._escala = escala
+        self.formulario.setRowWrapPolicy(QFormLayout.WrapAllRows if escala >= 1.4
+                                         else QFormLayout.DontWrapRows)
+        self._ajustar_altura()
+
+    def _ajustar_altura(self):
+        for control in self.controles.values():
+            control.setMinimumHeight(max(34, round(28 * self._escala) + 14))
+        self.formulario.invalidate()
+        self.setMinimumHeight(self.sizeHint().height())
 
     def usar(self, modelo: Distribucion):
         """Crea controles para cada ``Parametro`` del modelo elegido."""
         while self.formulario.count():
             elemento = self.formulario.takeAt(0)
             if elemento.widget():
+                # deleteLater espera al bucle Qt; ocultar ya evita campos
+                # fantasma al cambiar rápidamente de distribución.
+                elemento.widget().hide()
                 elemento.widget().deleteLater()
         self.controles.clear()
         self.modelo = modelo
@@ -52,9 +69,12 @@ class FormularioDistribucion(QWidget):
                 widget.setValue(float(campo.default))
                 widget.valueChanged.connect(self.cambiado)
             widget.setToolTip(campo.descripcion)
+            widget.setAccessibleName(f"Parámetro {campo.nombre.replace('_', ' ')}")
+            widget.setAccessibleDescription(campo.descripcion)
             widget.setMinimumHeight(34)
             self.formulario.addRow(campo.nombre.replace("_", " ") + "  ·", widget)
             self.controles[campo.nombre] = widget
+        self._ajustar_altura()
         self.cambiado.emit()
 
     def valores(self) -> dict:
@@ -73,6 +93,19 @@ class FormularioDistribucion(QWidget):
                 salida[campo.nombre] = widget.value()
         return self.modelo.validar(**salida)
 
+    def estado(self) -> dict:
+        """Captura entradas aun si son incompletas: guardar jamás las pierde."""
+        salida = {}
+        for nombre, widget in self.controles.items():
+            if isinstance(widget, QLineEdit):
+                try:
+                    salida[nombre] = [float(parte.strip()) for parte in widget.text().split(",")]
+                except ValueError:
+                    salida[nombre] = widget.text()
+            else:
+                salida[nombre] = widget.value()
+        return salida
+
     def restaurar(self, valores: dict):
         """Carga valores previos en los controles actualmente construidos."""
         for nombre, valor in valores.items():
@@ -80,7 +113,7 @@ class FormularioDistribucion(QWidget):
                 continue
             control = self.controles[nombre]
             if isinstance(control, QLineEdit):
-                control.setText(", ".join(map(str, valor)))
+                control.setText(valor if isinstance(valor, str) else ", ".join(map(str, valor)))
             else:
                 control.setValue(valor)
         self.cambiado.emit()

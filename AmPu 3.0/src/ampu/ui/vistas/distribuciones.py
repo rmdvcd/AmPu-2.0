@@ -39,16 +39,19 @@ class VistaDistribuciones(VistaTrabajo):
         cuerpo.addWidget(izquierda)
         panel.addWidget(etiqueta("CONFIGURA TU MODELO", "Eyebrow"))
         self.buscar = QLineEdit()
+        self.buscar.setAccessibleName("Buscar distribución por nombre")
         self.buscar.setPlaceholderText("Buscar por nombre…")
         self.buscar.textChanged.connect(self._filtrar)
         panel.addWidget(self.buscar)
         self.categoria = QComboBox()
+        self.categoria.setAccessibleName("Filtrar familias de distribuciones")
         for texto, clave in (("Todas las familias", "todas"), ("Discretas", "discretas"),
                              ("Continuas", "continuas"), ("Multivariadas", "multivariadas")):
             self.categoria.addItem(texto, clave)
         self.categoria.currentIndexChanged.connect(self._filtrar)
         panel.addWidget(self.categoria)
         self.selector = QComboBox()
+        self.selector.setAccessibleName("Distribución seleccionada")
         self.selector.currentIndexChanged.connect(self._seleccionada)
         panel.addWidget(self.selector)
         panel.addWidget(etiqueta("PARÁMETROS", "Eyebrow"))
@@ -62,6 +65,7 @@ class VistaDistribuciones(VistaTrabajo):
         panel.addWidget(scroll, 1)
         panel.addWidget(etiqueta("x  ·  valor a evaluar", "Muted"))
         self.evento = QLineEdit("5")
+        self.evento.setAccessibleName("Valor de evento x")
         self.evento.setToolTip("En modelos multidimensionales escribe una coordenada por componente, separadas por coma.")
         self.evento.textChanged.connect(self._validar)
         panel.addWidget(self.evento)
@@ -69,6 +73,7 @@ class VistaDistribuciones(VistaTrabajo):
         columna_q = QVBoxLayout()
         columna_q.addWidget(etiqueta("Cuantil q", "Muted"))
         self.cuantil = QDoubleSpinBox()
+        self.cuantil.setAccessibleName("Probabilidad del cuantil q")
         self.cuantil.setRange(0, 1)
         self.cuantil.setDecimals(5)
         self.cuantil.setSingleStep(.05)
@@ -79,6 +84,7 @@ class VistaDistribuciones(VistaTrabajo):
         columna_seed = QVBoxLayout()
         columna_seed.addWidget(etiqueta("Semilla", "Muted"))
         self.semilla = campo_semilla()
+        self.semilla.setAccessibleName("Semilla de simulación reproducible")
         columna_seed.addWidget(self.semilla)
         linea.addLayout(columna_seed, 1)
         panel.addLayout(linea)
@@ -114,6 +120,7 @@ class VistaDistribuciones(VistaTrabajo):
         right.setContentsMargins(0, 0, 0, 0)
         right.setSpacing(12)
         cuerpo.addWidget(derecha, 1)
+        self.configurar_adaptacion(cuerpo, izquierda)
         self.indicadores = KPIs(["P(X=x) / f(x)", "Acumulada F(x)", "Media", "Desviación"])
         right.addWidget(self.indicadores)
         self.separador = QSplitter(Qt.Vertical)
@@ -121,6 +128,7 @@ class VistaDistribuciones(VistaTrabajo):
         right.addWidget(self.separador, 1)
         chart_card, chart_layout = marco("ChartCard", 13)
         self.grafico_tipo = QComboBox()
+        self.grafico_tipo.setAccessibleName("Representación gráfica: densidad o acumulada")
         self.grafico_tipo.addItem("Masa / densidad", "densidad")
         self.grafico_tipo.addItem("Distribución acumulada · CDF", "cdf")
         self.grafico_tipo.currentIndexChanged.connect(self._grafico_actual)
@@ -145,6 +153,7 @@ class VistaDistribuciones(VistaTrabajo):
         self._filtrar()
         self.selector.setCurrentIndex(self.selector.findData("binomial"))
         self.calcular_inicial(150)
+        self.vigilar_entradas()
 
     def _filtrar(self):
         """Filtra el catálogo; modelos nuevos aparecen sin tocar esta vista."""
@@ -247,7 +256,7 @@ class VistaDistribuciones(VistaTrabajo):
     def estado(self) -> dict:
         """Datos completos necesarios para reconstruir esta vista."""
         return {"clave": self.selector.currentData(), "categoria": self.categoria.currentData(),
-                "parametros": self.formulario.valores(), "evento": self.evento.text(),
+                "parametros": self.formulario.estado(), "evento": self.evento.text(),
                 "q": self.cuantil.value(), "semilla": self.semilla.value(), "grafico": self.grafico_tipo.currentData(),
                 "tabla": self.tabla.datos().to_dict(orient="list") if self.ultimo is not None else self._tabla_pendiente}
 

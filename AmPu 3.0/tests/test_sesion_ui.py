@@ -53,10 +53,32 @@ def test_precision_numerica_y_orden_tras_editar(app):
     assert tabla.datos().equals(valores)
     tabla.item(0, 0).setText("0.999")
     assert tabla.item(0, 0).toolTip() == "0.999"
+    assert tabla.puede_deshacer()
+    tabla.undo()
+    assert tabla.datos().equals(valores)
+    assert tabla.puede_rehacer()
+    tabla.redo()
     tabla.sortItems(0)
     assert tabla.datos().iloc[-1, 0] == 0.999
     assert tabla.datos().iloc[0, 0] == valores.iloc[1, 0]
     tabla.close()
+
+
+def test_formulario_conserva_entrada_invalida_al_guardar(app):
+    from ampu.core.distribuciones.registro import obtener
+    from ampu.ui.widgets.formulario import FormularioDistribucion
+
+    formulario = FormularioDistribucion()
+    formulario.usar(obtener("multinomial"))
+    campo = formulario.controles["p"]
+    campo.setText("0.1, pendiente, 0.9")
+    assert formulario.estado()["p"] == "0.1, pendiente, 0.9"
+    copia = FormularioDistribucion()
+    copia.usar(obtener("multinomial"))
+    copia.restaurar(formulario.estado())
+    assert copia.controles["p"].text() == campo.text()
+    formulario.close()
+    copia.close()
 
 
 def test_sesion_restaurada_con_ediciones_en_todas_las_vistas(app, tmp_path):

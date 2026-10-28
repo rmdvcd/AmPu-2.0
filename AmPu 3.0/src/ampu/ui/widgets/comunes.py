@@ -5,8 +5,8 @@ import re
 import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QSpinBox,
-    QVBoxLayout, QWidget,
+    QFrame, QGridLayout, QHBoxLayout, QLabel, QPlainTextEdit,
+    QSpinBox, QVBoxLayout, QWidget,
 )
 
 from ampu.core.errores import ParametroInvalidoError
@@ -112,9 +112,10 @@ class KPIs(QWidget):
         """Crea una banda de tarjetas con etiquetas y valores."""
         super().__init__(parent)
         self.valores: list[QLabel] = []
-        fila = QHBoxLayout(self)
-        fila.setContentsMargins(0, 0, 0, 0)
-        fila.setSpacing(10)
+        self.tarjetas: list[QFrame] = []
+        self.rejilla = QGridLayout(self)
+        self.rejilla.setContentsMargins(0, 0, 0, 0)
+        self.rejilla.setSpacing(10)
         for titulo in titulos:
             contenedor, v = marco("KpiCard", 13)
             leyenda = QLabel(titulo.upper())
@@ -125,8 +126,20 @@ class KPIs(QWidget):
             numero.setMinimumWidth(65)
             v.addWidget(leyenda)
             v.addWidget(numero)
-            fila.addWidget(contenedor, 1)
+            self.rejilla.addWidget(contenedor, 0, len(self.tarjetas))
+            self.tarjetas.append(contenedor)
             self.valores.append(numero)
+        self._columnas = len(self.tarjetas)
+
+    def ajustar_escala(self, escala: float):
+        """Con texto grande, dos tarjetas por fila para evitar scroll horizontal."""
+        columnas = 2 if escala >= 1.4 else len(self.tarjetas)
+        if columnas == self._columnas:
+            return
+        self._columnas = columnas
+        for indice, tarjeta in enumerate(self.tarjetas):
+            self.rejilla.removeWidget(tarjeta)
+            self.rejilla.addWidget(tarjeta, indice // columnas, indice % columnas)
 
     def actualizar(self, *valores: object):
         """Muestra escalares sin redondear los cálculos subyacentes."""

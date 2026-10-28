@@ -5,8 +5,10 @@ from collections.abc import Callable
 
 import pandas as pd
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal, Slot
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import (QAbstractSpinBox, QBoxLayout, QCheckBox, QComboBox,
+                               QLineEdit, QPlainTextEdit, QWidget)
 
+from ampu.ui.widgets.comunes import KPIs
 from ampu.ui.widgets.tabla import TablaDatos
 
 from ampu.core.errores import ErrorAmPu
@@ -49,25 +51,37 @@ class Tarea(QRunnable):
         self.funcion, self.args, self.kwargs = funcion, args, kwargs
         self.senales = Senales()
 
+    def _emitir(self, nombre: str, *argumentos):
+        """Al cerrar la aplicación, una señal Qt puede haberse destruido."""
+        try:
+            getattr(self.senales, nombre).emit(*argumentos)
+        except RuntimeError:
+            REGISTRO.debug("Se ignoró %s de una tarea al cerrar la interfaz", nombre)
+
     @Slot()
     def run(self):
         """Emite resultado, excepción de dominio o mensaje protegido."""
         try:
-            self.senales.resultado.emit(self.funcion(*self.args, **self.kwargs))
+            valor = self.funcion(*self.args, **self.kwargs)
         except ErrorAmPu as exc:
             REGISTRO.warning("Entrada no válida: %s", exc)
-            self.senales.error.emit(str(exc))
+            self._emitir("error", str(exc))
         except Exception:
             REGISTRO.exception("Fallo inesperado en cálculo asíncrono")
-            self.senales.error.emit("No se pudo completar la operación. Revisa los datos o consulta el registro de errores.")
+            self._emitir("error", "No se pudo completar la operación. Revisa los datos o consulta el registro de errores.")
+        else:
+            self._emitir("resultado", valor)
         finally:
-            self.senales.fin.emit()
+            self._emitir("fin")
 
 
 class VistaTrabajo(QWidget):
     """Clase base que gestiona un solo cálculo activo y su fin."""
 
     aviso = Signal(str)
+    estado_cambiado = Signal()
+    entrada_modificada = Signal()
+    trabajo_finalizado = Signal()
     abrir_teoria = Signal(str)
 
     def __init__(self, parent=None):
@@ -83,6 +97,75 @@ class VistaTrabajo(QWidget):
         self._hojas_editadas: dict[str, pd.DataFrame] = {}
         self._hoja_visible: str | None = None
         self._inicial: QTimer | None = None
+        self._cuerpo_adaptable: QBoxLayout | None = None
+        self._form_adaptable: QWidget | None = None
+        self._escala_interfaz = 1.0
+        self._desactualizado = False
+        self._cambio_durante_calculo = False
+
+    def vigilar_entradas(self):
+        """Si se editan entradas, no exportar el resultado anterior como si fuera nuevo."""
+        excluidos = {getattr(self, clave) for clave in ("hojas", "grafico_tipo", "modo", "buscar")
+                     if hasattr(self, clave)}
+        for widget in self.findChildren(QWidget):
+            if widget in excluidos:
+                continue  # Cambiar hoja o representación redibuja el mismo resultado.
+            senal = None
+            if isinstance(widget, (QLineEdit, QPlainTextEdit)):
+                senal = widget.textChanged
+            elif isinstance(widget, QComboBox):
+                senal = widget.currentIndexChanged
+            elif isinstance(widget, QCheckBox):
+                senal = widget.toggled
+            elif isinstance(widget, QAbstractSpinBox):
+                senal = widget.valueChanged if hasattr(widget, "valueChanged") else widget.editingFinished
+            if senal is not None:
+                senal.connect(self._marcar_entradas)
+        if hasattr(self, "formulario") and hasattr(self.formulario, "cambiado"):
+            self.formulario.cambiado.connect(self._marcar_entradas)  # campos dinámicos.
+
+    def _marcar_entradas(self, *_):
+        self.entrada_modificada.emit()
+        if self._ocupado:
+            self._cambio_durante_calculo = True
+        if self.ultimo is not None and not self._desactualizado:
+            self._desactualizado = True
+            self.estado_cambiado.emit()
+            self.aviso.emit("Entradas modificadas: recalcula antes de exportar. El gráfico anterior es de referencia.")
+
+    def configurar_adaptacion(self, cuerpo: QBoxLayout, formulario: QWidget):
+        """Refluye formulario/resultados en pantallas pequeñas o texto ampliado."""
+        self._cuerpo_adaptable = cuerpo
+        self._form_adaptable = formulario
+        self._ajustar_diseno()
+
+    def ajustar_escala(self, escala: float):
+        self._escala_interfaz = escala
+        margen = (10, 10, 10, 10) if escala >= 1.4 else (25, 24, 25, 22)
+        self.layout().setContentsMargins(*margen)
+        if hasattr(self, "formulario") and hasattr(self.formulario, "ajustar_escala"):
+            self.formulario.ajustar_escala(escala)
+        self._ajustar_diseno()
+        for indicadores in self.findChildren(KPIs):
+            indicadores.ajustar_escala(escala)
+
+    def resizeEvent(self, evento):
+        super().resizeEvent(evento)
+        self._ajustar_diseno()
+
+    def _ajustar_diseno(self):
+        if self._cuerpo_adaptable is None or self._form_adaptable is None:
+            return
+        compacto = self.width() < 900 or self._escala_interfaz >= 1.4
+        orientacion = QBoxLayout.TopToBottom if compacto else QBoxLayout.LeftToRight
+        if self._cuerpo_adaptable.direction() == orientacion:
+            return
+        self._cuerpo_adaptable.setDirection(orientacion)
+        if compacto:
+            self._form_adaptable.setMinimumWidth(0)
+            self._form_adaptable.setMaximumWidth(16_777_215)
+        else:
+            self._form_adaptable.setFixedWidth(315)
 
     def calcular_inicial(self, milisegundos: int):
         """Programa el primer cálculo, cancelable si una sesión se abre antes."""
@@ -110,6 +193,8 @@ class VistaTrabajo(QWidget):
             self._inicial.stop()
         self._revision += 1
         self._recalculo_pendiente = False
+        self._desactualizado = False
+        self._cambio_durante_calculo = False
         self._tabla_pendiente = None
         self._hojas_pendientes = {}
         self._hojas_editadas = {}
@@ -119,6 +204,7 @@ class VistaTrabajo(QWidget):
             self.hojas.clear()
         self.tabla.mostrar(pd.DataFrame())
         self.grafico.vacio()
+        self.estado_cambiado.emit()
         for atributo in ("conclusion", "resumen"):
             if hasattr(self, atributo):
                 getattr(self, atributo).setText("Aún no hay resultados.")
@@ -134,6 +220,7 @@ class VistaTrabajo(QWidget):
 
     def iniciar_hojas(self, originales: dict[str, pd.DataFrame]):
         """Inicia el conjunto de hojas sin perder ediciones previas de otras pestañas."""
+        self.tabla.reiniciar_historial()  # Un cálculo nuevo invalida el historial anterior.
         self._hojas_editadas = {k: tabla_de_sesion(self._hojas_pendientes.get(k), v)
                                 for k, v in originales.items()}
         self._hojas_pendientes = {}
@@ -143,7 +230,7 @@ class VistaTrabajo(QWidget):
         """Guarda la hoja saliente y muestra la nueva, conservando ediciones."""
         self._guardar_hoja(widget)
         if nombre in self._hojas_editadas:
-            widget.mostrar(self._hojas_editadas[nombre])
+            widget.mostrar(self._hojas_editadas[nombre], identificador=nombre)
             self._hoja_visible = nombre
 
     def _guardar_hoja(self, widget: TablaDatos):
@@ -161,10 +248,20 @@ class VistaTrabajo(QWidget):
             self.aviso.emit("Ya hay un cálculo en progreso.")
             return False
         self._ocupado = True
+        self._cambio_durante_calculo = False
         revision = self._revision
         tarea = Tarea(funcion, *args, **kwargs)
         self._tarea = tarea
-        tarea.senales.resultado.connect(lambda valor: resultado(valor) if revision == self._revision else None)
+
+        def publicar(valor):
+            if revision == self._revision:
+                resultado(valor)
+                self._desactualizado = self._cambio_durante_calculo
+                self.estado_cambiado.emit()
+                if self._desactualizado:
+                    self.aviso.emit("El cálculo corresponde a entradas anteriores; recalcula para exportar.")
+
+        tarea.senales.resultado.connect(publicar)
         tarea.senales.error.connect(lambda texto: self.aviso.emit(texto) if revision == self._revision else None)
 
         def terminado():
@@ -173,6 +270,7 @@ class VistaTrabajo(QWidget):
             if final:
                 final()
             self._continuar_restauracion()
+            self.trabajo_finalizado.emit()
 
         tarea.senales.fin.connect(terminado)
         QThreadPool.globalInstance().start(tarea)

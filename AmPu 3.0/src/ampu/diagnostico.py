@@ -16,6 +16,7 @@ def verificar_recursos() -> dict:
     from openpyxl import load_workbook
     import pandas as pd
 
+    from ampu.docs.expresiones import previsualizar_latex
     from ampu.docs.teoria import DOCUMENTOS, PLANTILLA, listar_teoria, renderizar
     from ampu.io import ServicioExportacion as io
 
@@ -24,7 +25,7 @@ def verificar_recursos() -> dict:
     icono = raiz / "ui" / "recursos" / "icono.svg"
     render = PLANTILLA.parent
     recursos = [PLANTILLA, icono, estilos / "claro.qss", estilos / "oscuro.qss",
-                render / "katex.min.js", render / "katex.min.css", render / "auto-render.min.js",
+                estilos / "contraste.qss", render / "katex.min.js", render / "katex.min.css", render / "auto-render.min.js",
                 render / "fonts" / "KaTeX_Main-Regular.woff2",
                 render / "fonts" / "stix-two-math-latin-400-normal.woff2",
                 DOCUMENTOS / "binomial.md", DOCUMENTOS.parent / "imagenes" / "binomial.png"]
@@ -35,10 +36,13 @@ def verificar_recursos() -> dict:
     imagenes = list((DOCUMENTOS.parent / "imagenes").glob("*.png"))
     if len(lecciones) != 57 or len(imagenes) != 31:
         raise RuntimeError(f"Catálogo incompleto: {len(lecciones)} lecciones, {len(imagenes)} imágenes")
-    for tema in ("claro", "oscuro"):
+    for tema in ("claro", "oscuro", "contraste"):
         html = renderizar("binomial", tema)
+        formula = previsualizar_latex(r"\frac{x}{2}", tema)
         if f'data-tema="{tema}"' not in html or "formula-bloque" not in html:
             raise RuntimeError(f"La plantilla de teoría {tema} no se pudo renderizar")
+        if "htmlAndMathml" not in formula or "katex.min.js" not in formula:
+            raise RuntimeError(f"Faltan recursos para la vista matemática {tema}")
 
     with tempfile.TemporaryDirectory(prefix="ampu-autoprueba-") as temporal:
         carpeta = Path(temporal)
@@ -158,14 +162,47 @@ def verificar_webengine(app, captura: str | None = None) -> dict:
         oscuro = evaluar()
         if oscuro["tema"] != "oscuro" or oscuro["formulas"] < 3 or oscuro["color"] == datos["color"]:
             raise RuntimeError(f"La paleta oscura no se aplicó al DOM: {oscuro}")
+
         if captura:
             ruta = Path(captura)
             ruta.parent.mkdir(parents=True, exist_ok=True)
             app.processEvents()
             if not ventana.grab().save(str(ruta), "PNG"):
                 raise RuntimeError(f"No se pudo capturar {ruta}")
+
+        ventana.calculadora()
+        asistente = ventana.asistente
+        asistente.pestanas.setCurrentIndex(1)
+        if asistente._navegador is None:
+            raise RuntimeError("El asistente no inició QtWebEngine local")
+        cargas_formula: list[bool] = []
+        asistente._navegador.loadFinished.connect(cargas_formula.append)
+        asistente.latex.setPlainText(r"\frac{\sqrt{2}}{2}")
+        if not _esperar_qt(lambda: bool(cargas_formula) and asistente.copiar_mathml_boton.isEnabled(), 10_000):
+            raise RuntimeError("KaTeX del asistente no generó MathML")
+        def inspeccionar_formula():
+            salidas = []
+            asistente._navegador.page().runJavaScript("""(() => ({
+              mathml: !!document.querySelector('#formula math'),
+              lineal: document.querySelector('#fuente')?.textContent || '',
+              error: document.querySelector('#estado')?.textContent || '',
+              tema: document.documentElement.dataset.tema
+            }))()""", salidas.append)
+            if not _esperar_qt(lambda: bool(salidas), 6_000):
+                raise RuntimeError("La vista de fórmula no devolvió su DOM")
+            return salidas[0]
+        formula = inspeccionar_formula()
+        if not formula["mathml"] or formula["lineal"] != r"\frac{\sqrt{2}}{2}" or formula["error"]:
+            raise RuntimeError(f"La fórmula estructurada y su alternativa difieren: {formula}")
+        cargas_formula.clear()
+        ventana.aplicar_tema("contraste")
+        if not _esperar_qt(lambda: bool(cargas_formula) and asistente.copiar_mathml_boton.isEnabled(), 10_000):
+            raise RuntimeError("La vista matemática no se actualizó al cambiar a alto contraste")
+        if inspeccionar_formula()["tema"] != "contraste":
+            raise RuntimeError("El contraste no llegó a la vista matemática")
         return {"webengine": "correcto", "formulas": oscuro["formulas"], "imagenes": len(oscuro["imagenes"]),
-                "tema_oscuro": oscuro["color"]}
+                "tema_oscuro": oscuro["color"], "asistente_mathml": formula["mathml"],
+                "asistente_contraste": "correcto"}
     finally:
         ventana.close()
         app.processEvents()
