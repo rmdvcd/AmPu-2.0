@@ -65,6 +65,21 @@ python -m ampu --self-test         # requiere escritorio completo; comprueba Chr
 
 Verificado en Python **3.12.11**, NumPy **2.5.4**, SciPy **1.18.1**, pandas **3.1.0**, PySide6 **6.12.0**: **148 pruebas aprobadas**, **1 módulo WebEngine omitido por falta de bibliotecas gráficas nativas**, **92 % de cobertura del núcleo con ramas** (objetivo ≥85 %) y **121/121** comparaciones contra SciPy. Las pruebas de QWidget se ejecutaron en plataforma offscreen con suplentes gráficos **solo de pruebas** y un SQLite temporal para coverage; estos **no forman parte del proyecto ni de sus ejecutables**. `tests/test_webengine.py` usa Chromium real, nunca mocks: se omite solo si no puede importar sus bibliotecas nativas; en un equipo preparado, un error de fórmula, CSS, imagen o paleta hará fallar la prueba. **La autoprueba `--self-test` nunca omite WebEngine**: falla con código no cero si la vista no renderiza. En este sandbox minimalista no se ha podido ejecutar esa autoprueba visual; no se confunde una prueba omitida con una validación exitosa.
 
+### Batería de verificación en Windows (PowerShell)
+
+`verificacion/` contiene un orquestador y cuatro herramientas propias para ejecutar todas
+las pruebas visuales, de rendimiento y de cálculo en un equipo Windows y generar un
+`REPORTE.md` + `resumen.json` + `reporte.zip` con capturas, logs y hallazgos priorizados:
+
+```powershell
+cd "C:\ruta\a\AmPu-2.0\AmPu 3.0"
+powershell -ExecutionPolicy Bypass -File ".\verificacion\EjecutarVerificacion.ps1" -Perfil completo -Instalar -AbrirReporte
+```
+
+Perfiles: `rapido`, `completo`, `visual`, `rendimiento` y `calculo`. Requisitos, comandos
+individuales, umbrales y solución de problemas en
+[`verificacion/README.md`](verificacion/README.md).
+
 Los ejemplos originales Java se comparan en [`tests/test_paridad_java.py`](tests/test_paridad_java.py). Los resultados que eran erróneos **no se copian**: consulta [MIGRACION.md](MIGRACION.md) para fórmulas, casos y diferencias. La ubicación de archivos y alcance se explican en [PLAN.md](PLAN.md). Las contribuciones y convenciones están en [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Empaquetar
