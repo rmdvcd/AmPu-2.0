@@ -16,8 +16,9 @@ class Grafico(QWidget):
     def __init__(self, parent=None):
         """Construye una sola Figure y sus controles nativos de navegación."""
         super().__init__(parent)
-        self.figura = Figure(figsize=(7, 3.6), dpi=105)
+        self.figura = Figure(figsize=(7, 3.6), dpi=110)
         self.lienzo = FigureCanvasQTAgg(self.figura)
+        self.lienzo.setMinimumHeight(250)
         self.barra = NavigationToolbar2QT(self.lienzo, self)
         self.pie = QLabel("Arrastra para explorar · usa la lupa para ampliar")
         self.pie.setObjectName("Muted")
@@ -36,6 +37,8 @@ class Grafico(QWidget):
         self.oscuro = False
         self._escala = 1.0
         self._ultimo: tuple | None = None
+        self._efecto: QGraphicsOpacityEffect | None = None
+        self._animacion: QPropertyAnimation | None = None
         self.lienzo.mpl_connect("motion_notify_event", self._mover)
         self.vacio()
 
@@ -74,10 +77,28 @@ class Grafico(QWidget):
         self.descripcion.setText(texto)
         self.lienzo.setAccessibleDescription(texto)
 
+    def _tinta(self) -> str:
+        """Color de texto/ticks según el tema activo."""
+        return "#E5ECF3" if self.oscuro else "#30445C"
+
+    def _animar_aparicion(self):
+        """Transición breve de aparición del gráfico recién dibujado (no bloquea)."""
+        if self._efecto is None:
+            self._efecto = QGraphicsOpacityEffect(self.lienzo)
+            self.lienzo.setGraphicsEffect(self._efecto)
+        self._efecto.setOpacity(0.0)
+        anim = QPropertyAnimation(self._efecto, b"opacity", self)
+        anim.setDuration(240)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.start()
+        self._animacion = anim  # evita que el recolector destruya la animación
+
     def _ejes(self):
         """Reinicia ejes y paleta compatibles con fondo claro u oscuro."""
         fondo = "#19283B" if self.oscuro else "#FFFFFF"
-        tinta = "#E5ECF3" if self.oscuro else "#30445C"
+        tinta = self._tinta()
         self.figura.clear()
         self.figura.set_facecolor(fondo)
         ax = self.figura.add_subplot(111)
@@ -88,7 +109,9 @@ class Grafico(QWidget):
         ax.xaxis.label.set_color(tinta)
         ax.yaxis.label.set_color(tinta)
         ax.title.set_color(tinta)
-        ax.grid(axis="y", alpha=.16, color=tinta)
+        ax.grid(alpha=.14, color=tinta)
+        ax.set_axisbelow(True)
+        ax.margins(x=.04)
         return ax
 
     def _fin(self):
@@ -102,6 +125,7 @@ class Grafico(QWidget):
                     texto.set_fontsize(10 * self._escala)
         self.figura.tight_layout(pad=1.6)
         self.lienzo.draw_idle()
+        self._animar_aparicion()
 
     def vacio(self):
         """Representa estado inicial ligero, sin muestras inventadas."""
@@ -131,16 +155,23 @@ class Grafico(QWidget):
             ax.set(ylabel="F(x)", ylim=(-.03, 1.06), title="Función de distribución acumulada" + (" · marginal empírica" if resultado.marginal else ""))
         else:
             if resultado.discreta:
-                ax.bar(x, y, color=np.where(x <= resultado.evento, color, gris), alpha=.86, width=.8)
+                barras = ax.bar(x, y, color=np.where(x <= resultado.evento, color, gris), alpha=.86, width=.8)
+                if len(x) <= 25:
+                    ax.bar_label(barras, fmt="%.3g", fontsize=8 * self._escala, color=self._tinta(), padding=2)
+                    ax.margins(y=.14)
             else:
                 ax.plot(x, y, lw=2.3, color=color)
                 ax.fill_between(x, y, where=(x <= resultado.evento), interpolate=True, color="#39B9AD", alpha=.29)
+            if x.min() <= resultado.evento <= x.max() and not resultado.marginal:
+                y_evento = float(resultado.respuesta["probabilidad_o_densidad"])
+                ax.scatter([resultado.evento], [y_evento], s=65, color="#F0A96B", zorder=5)
+                ax.axvline(resultado.evento, color="#F0A96B", ls="--", lw=1)
             ax.set(ylabel="P(X = x)" if resultado.discreta else "f(x)",
                    title=("Masa de probabilidad" if resultado.discreta else "Densidad de probabilidad")
                    + (" · marginal simulada" if resultado.marginal else ""))
             ax.set_ylim(bottom=0)
         ax.set_xlabel("x" if not resultado.marginal else "Primera componente")
-        self.pie.setText("Punto marcado = CDF(x); el área sombreada representa P(X ≤ x)." if not resultado.marginal else
+        self.pie.setText("Punto naranja = evento x; el área sombreada representa P(X ≤ x)." if not resultado.marginal else
                          "Gráfico de la primera marginal simulada; consulta conjunta en la tabla.")
         if resultado.marginal:
             self._describir("Primera marginal simulada, no densidad o masa conjunta. "
@@ -165,6 +196,10 @@ class Grafico(QWidget):
         ax.bar(posicion+.19, seleccion, width=.38, label="Muestra",
                color="#60D8CA" if self.oscuro else "#087568", hatch="//")
         ax.set_xticks(posicion, etiquetas)
+        if len(etiquetas) > 5:
+            ax.tick_params(axis="x", rotation=28)
+            for etiqueta in ax.get_xticklabels():
+                etiqueta.set_ha("right")
         ax.set_ylabel("Unidades")
         ax.set_title("Diseño muestral")
         ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
@@ -179,7 +214,14 @@ class Grafico(QWidget):
         """Representa resultados categóricos no muestrales."""
         self._ultimo = ("serie", (etiquetas, valores, titulo), {})
         ax = self._ejes()
-        ax.bar(etiquetas, valores, color="#60D8CA" if self.oscuro else "#087568", alpha=.95)
+        barras = ax.bar(etiquetas, valores, color="#60D8CA" if self.oscuro else "#087568", alpha=.95)
+        if len(etiquetas) > 5:
+            ax.tick_params(axis="x", rotation=28)
+            for etiqueta in ax.get_xticklabels():
+                etiqueta.set_ha("right")
+        if len(etiquetas) <= 20:
+            ax.bar_label(barras, fmt="%.4g", fontsize=8 * self._escala, color=self._tinta(), padding=2)
+        ax.margins(y=.12)
         ax.set(title=titulo, ylabel="Valor")
         self.pie.setText("Altura de cada barra calculada por el motor estadístico.")
         self._describir(f"{titulo}: gráfico de barras. " +

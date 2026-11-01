@@ -74,5 +74,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(reporte, ensure_ascii=False))
         return 0
     ventana = VentanaPrincipal()
+    # Aparición suave de la ventana principal (transición de carga inicial).
+    from PySide6.QtCore import QEasingCurve, QPropertyAnimation
+    ventana.setWindowOpacity(0.0)
     ventana.show()
+    entrada = QPropertyAnimation(ventana, b"windowOpacity", ventana)
+    entrada.setDuration(320)
+    entrada.setStartValue(0.0)
+    entrada.setEndValue(1.0)
+    entrada.setEasingCurve(QEasingCurve.Type.OutCubic)
+    entrada.start(QPropertyAnimation.DeleteWhenStopped)
+    ventana._anim_entrada = entrada  # referencia viva durante la animación
     return app.exec()

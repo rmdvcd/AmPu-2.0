@@ -52,8 +52,20 @@ public class Interfaz extends javax.swing.JFrame{
     GestionEncabezadoTabla GET=new GestionEncabezadoTabla();
     public Interfaz() {
         initComponents();
-        ImageIcon imagen1 = new ImageIcon(getClass().getResource("/ImgVisual/icono_ampu.png"));
+        ImageIcon imagen1 = icono("/ImgVisual/icono_ampu.png");
         this.setIconImage(imagen1.getImage());
+    }
+    /**
+     * Carga un icono desde los recursos de forma segura: si el recurso no
+     * existe devuelve un icono vacío en lugar de lanzar NullPointerException.
+     */
+    public static ImageIcon icono(String ruta){
+        java.net.URL url=Interfaz.class.getResource(ruta);
+        if(url==null){
+            Logger.getLogger(Interfaz.class.getName()).warning("Icono no encontrado: "+ruta);
+            return new ImageIcon();
+        }
+        return new ImageIcon(url);
     }
     public double redondeo(double x){
         return Math.rint(x*10000)/10000;
@@ -110,7 +122,7 @@ public class Interfaz extends javax.swing.JFrame{
     public void teoria(URL url){
     try {
            if(panel.getPage()!=url) {
-            ImageIcon imagen2 = new ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_32.png"));
+            ImageIcon imagen2 = icono("/ImgVisual/elementos_teoricos_32.png");
             jf.setIconImage(imagen2.getImage());
             jf.remove(panel);
             panel.setPage(url);
@@ -592,7 +604,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBLcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDBLcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDBLcampos.setToolTipText("Limpiar campos");
         DDBLcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBLcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -601,7 +613,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDBLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDBLtabla.setToolTipText("Limpiar tabla");
         DDBLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -610,7 +622,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBlessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DDBlessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DDBlessfila.setToolTipText("Eliminar fila");
         DDBlessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBlessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -619,7 +631,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBTbimonialN.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DDBTbimonialN.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DDBTbimonialN.setToolTipText("Teoria");
         DDBTbimonialN.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBTbimonialN.addActionListener(new java.awt.event.ActionListener() {
@@ -628,7 +640,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBCexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        DDBCexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         DDBCexcel.setToolTipText("Guardar");
         DDBCexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBCexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -756,7 +768,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBNLcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDBNLcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDBNLcampos.setToolTipText("Limpiar campos");
         DDBNLcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBNLcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -811,7 +823,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jScrollPane12.setViewportView(DDBNTabla);
         DDBNTabla.getColumnModel().getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
 
-        DDBNCexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        DDBNCexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         DDBNCexcel.setToolTipText("Guardar");
         DDBNCexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBNCexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -820,7 +832,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBNLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDBNLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDBNLtabla.setToolTipText("Limpiar tabla");
         DDBNLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBNLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -829,7 +841,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBNlessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DDBNlessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DDBNlessfila.setToolTipText("Eliminar fila");
         DDBNlessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBNlessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -838,7 +850,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDBNTbimonialN.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DDBNTbimonialN.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DDBNTbimonialN.setToolTipText("Teoria");
         DDBNTbimonialN.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDBNTbimonialN.addActionListener(new java.awt.event.ActionListener() {
@@ -974,7 +986,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         DDMVpsal.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         DDMVpsal.setText("Valor p :");
 
-        DDMLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDMLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDMLtabla.setToolTipText("Limpiar tabla");
         DDMLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDMLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -983,7 +995,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDMAddTabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/add.png"))); // NOI18N
+        DDMAddTabla.setIcon(icono("/ImgVisual/add.png")); // NOI18N
         DDMAddTabla.setToolTipText("Agregar fila");
         DDMAddTabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDMAddTabla.addActionListener(new java.awt.event.ActionListener() {
@@ -992,7 +1004,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDMLessTabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DDMLessTabla.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DDMLessTabla.setToolTipText("Eliminar fila");
         DDMLessTabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDMLessTabla.addActionListener(new java.awt.event.ActionListener() {
@@ -1009,7 +1021,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDMTeoria.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DDMTeoria.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DDMTeoria.setToolTipText("Teoria");
         DDMTeoria.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDMTeoria.addActionListener(new java.awt.event.ActionListener() {
@@ -1134,7 +1146,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDGLcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDGLcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDGLcampos.setToolTipText("Limpiar campos");
         DDGLcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDGLcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -1143,7 +1155,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDGTgeo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DDGTgeo.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DDGTgeo.setToolTipText("Teoria");
         DDGTgeo.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDGTgeo.addActionListener(new java.awt.event.ActionListener() {
@@ -1163,7 +1175,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         );
         jScrollPane11.setViewportView(DDGTabla);
 
-        DDGLessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DDGLessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DDGLessfila.setToolTipText("Eliminar fila");
         DDGLessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDGLessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -1172,7 +1184,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDGLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDGLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDGLtabla.setToolTipText("Limpiar tabla");
         DDGLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDGLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -1181,7 +1193,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDGCexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        DDGCexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         DDGCexcel.setToolTipText("Guardar");
         DDGCexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDGCexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -1354,7 +1366,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDHLcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDHLcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDHLcampos.setToolTipText("Limpiar campos");
         DDHLcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDHLcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -1363,7 +1375,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDHLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDHLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDHLtabla.setToolTipText("Limpiar tabla");
         DDHLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDHLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -1372,7 +1384,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDHlessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DDHlessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DDHlessfila.setToolTipText("Eliminar fila");
         DDHlessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDHlessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -1381,7 +1393,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDHThiper.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DDHThiper.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DDHThiper.setToolTipText("Teoria");
         DDHThiper.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDHThiper.addActionListener(new java.awt.event.ActionListener() {
@@ -1415,7 +1427,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             .addGap(0, 391, Short.MAX_VALUE)
         );
 
-        DDHCexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        DDHCexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         DDHCexcel.setToolTipText("Guardar");
         DDHCexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDHCexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -1558,7 +1570,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDPLcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDPLcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDPLcampos.setToolTipText("Limpiar campos");
         DDPLcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDPLcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -1567,7 +1579,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDPTpoisson.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DDPTpoisson.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DDPTpoisson.setToolTipText("Teoria");
         DDPTpoisson.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDPTpoisson.addActionListener(new java.awt.event.ActionListener() {
@@ -1590,7 +1602,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jScrollPane4.setViewportView(DDPTabla);
         DDPTabla.getColumnModel().getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
 
-        DDPLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DDPLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DDPLtabla.setToolTipText("Limpiar tabla");
         DDPLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDPLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -1599,7 +1611,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDPlessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DDPlessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DDPlessfila.setToolTipText("Eliminar fila");
         DDPlessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDPlessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -1608,7 +1620,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DDPLtabla1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        DDPLtabla1.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         DDPLtabla1.setToolTipText("Guardar");
         DDPLtabla1.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DDPLtabla1.addActionListener(new java.awt.event.ActionListener() {
@@ -1779,7 +1791,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCULcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCULcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCULcampos.setToolTipText("Limpiar campos");
         DCULcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCULcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -1788,7 +1800,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCULtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCULtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCULtabla.setToolTipText("Limpiar tabla");
         DCULtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCULtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -1797,7 +1809,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCUlessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        DCUlessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         DCUlessfila.setToolTipText("Eliminar fila");
         DCUlessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCUlessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -1806,7 +1818,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCUTuniformec.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DCUTuniformec.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DCUTuniformec.setToolTipText("Teoria");
         DCUTuniformec.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCUTuniformec.addActionListener(new java.awt.event.ActionListener() {
@@ -1818,7 +1830,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         DCUsalF.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         DCUsalF.setText("f(x) =");
 
-        DCU_Cexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        DCU_Cexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         DCU_Cexcel.setToolTipText("Guardar");
         DCU_Cexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCU_Cexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -1970,7 +1982,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         DCNsalVp.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         DCNsalVp.setText("Valor p :");
 
-        DCNLcamposz.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCNLcamposz.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCNLcamposz.setToolTipText("Limpiar campos");
         DCNLcamposz.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCNLcamposz.addActionListener(new java.awt.event.ActionListener() {
@@ -1979,7 +1991,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCNTnormal.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DCNTnormal.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DCNTnormal.setToolTipText("Teoria");
         DCNTnormal.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCNTnormal.addActionListener(new java.awt.event.ActionListener() {
@@ -1998,7 +2010,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCNLcamposp.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCNLcamposp.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCNLcamposp.setToolTipText("Limpiar campos");
         DCNLcamposp.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCNLcamposp.addActionListener(new java.awt.event.ActionListener() {
@@ -2156,7 +2168,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
 
         D_Con.addTab("Normal Estándar", Panel_NEst);
 
-        DCCLcampos1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCCLcampos1.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCCLcampos1.setToolTipText("Limpiar campos");
         DCCLcampos1.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCCLcampos1.addActionListener(new java.awt.event.ActionListener() {
@@ -2168,7 +2180,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jLabel27.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         jLabel27.setText("Grados de libertad :");
 
-        DCCLcamposp2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCCLcamposp2.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCCLcamposp2.setToolTipText("Limpiar campos");
         DCCLcamposp2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCCLcamposp2.addActionListener(new java.awt.event.ActionListener() {
@@ -2205,7 +2217,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCCTchicuadrado.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DCCTchicuadrado.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DCCTchicuadrado.setToolTipText("Teoria");
         DCCTchicuadrado.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCCTchicuadrado.addActionListener(new java.awt.event.ActionListener() {
@@ -2420,7 +2432,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jLabel35.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         jLabel35.setText("Valor x :");
 
-        DCELcampos1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCELcampos1.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCELcampos1.setToolTipText("Limpiar campos");
         DCELcampos1.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCELcampos1.addActionListener(new java.awt.event.ActionListener() {
@@ -2429,7 +2441,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCETexponencial.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DCETexponencial.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DCETexponencial.setToolTipText("Teoria");
         DCETexponencial.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCETexponencial.addActionListener(new java.awt.event.ActionListener() {
@@ -2459,7 +2471,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCELcampos2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCELcampos2.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCELcampos2.setToolTipText("Limpiar campos");
         DCELcampos2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCELcampos2.addActionListener(new java.awt.event.ActionListener() {
@@ -2623,7 +2635,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jLabel39.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         jLabel39.setText("Grados de libertad(n) :");
 
-        DCFLcampos1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCFLcampos1.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCFLcampos1.setToolTipText("Limpiar campos");
         DCFLcampos1.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCFLcampos1.addActionListener(new java.awt.event.ActionListener() {
@@ -2675,7 +2687,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCFLcampos2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCFLcampos2.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCFLcampos2.setToolTipText("Limpiar campos");
         DCFLcampos2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCFLcampos2.addActionListener(new java.awt.event.ActionListener() {
@@ -2701,7 +2713,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCFTfisher.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DCFTfisher.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DCFTfisher.setToolTipText("Teoria");
         DCFTfisher.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCFTfisher.addActionListener(new java.awt.event.ActionListener() {
@@ -2944,7 +2956,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         DCTsalX.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         DCTsalX.setText("Valor x :");
 
-        DCTLcampos1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCTLcampos1.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCTLcampos1.setToolTipText("Limpiar campos");
         DCTLcampos1.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCTLcampos1.addActionListener(new java.awt.event.ActionListener() {
@@ -2953,7 +2965,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCTLcampos2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        DCTLcampos2.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         DCTLcampos2.setToolTipText("Limpiar campos");
         DCTLcampos2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCTLcampos2.addActionListener(new java.awt.event.ActionListener() {
@@ -2962,7 +2974,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        DCTTstudent.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        DCTTstudent.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         DCTTstudent.setToolTipText("Teoria");
         DCTTstudent.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         DCTTstudent.addActionListener(new java.awt.event.ActionListener() {
@@ -3178,7 +3190,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jLabel52.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         jLabel52.setText("Muestreo :");
 
-        MASFTfinito.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        MASFTfinito.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         MASFTfinito.setToolTipText("Teoria");
         MASFTfinito.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFTfinito.addActionListener(new java.awt.event.ActionListener() {
@@ -3187,7 +3199,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASFLcampos1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        MASFLcampos1.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         MASFLcampos1.setToolTipText("Limpiar campos");
         MASFLcampos1.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFLcampos1.addActionListener(new java.awt.event.ActionListener() {
@@ -3216,7 +3228,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jLabel54.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         jLabel54.setText("n :");
 
-        MASFLcampos2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        MASFLcampos2.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         MASFLcampos2.setToolTipText("Limpiar campos");
         MASFLcampos2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFLcampos2.addActionListener(new java.awt.event.ActionListener() {
@@ -3244,7 +3256,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASFLtabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        MASFLtabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         MASFLtabla.setToolTipText("Limpiar tabla");
         MASFLtabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFLtabla.addActionListener(new java.awt.event.ActionListener() {
@@ -3253,7 +3265,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASFlessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        MASFlessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         MASFlessfila.setToolTipText("Eliminar fila");
         MASFlessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFlessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -3262,7 +3274,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASFCexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        MASFCexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         MASFCexcel.setToolTipText("Guardar");
         MASFCexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFCexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -3271,7 +3283,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASFCexcel2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        MASFCexcel2.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         MASFCexcel2.setToolTipText("Guardar");
         MASFCexcel2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASFCexcel2.addActionListener(new java.awt.event.ActionListener() {
@@ -3455,7 +3467,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jLabel59.setFont(new java.awt.Font("sansserif", 1, 12)); // NOI18N
         jLabel59.setText("p :");
 
-        MASILcampos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        MASILcampos.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         MASILcampos.setToolTipText("Limpiar campos");
         MASILcampos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASILcampos.addActionListener(new java.awt.event.ActionListener() {
@@ -3464,7 +3476,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASITinfinnito.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        MASITinfinnito.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         MASITinfinnito.setToolTipText("Teoria");
         MASITinfinnito.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASITinfinnito.addActionListener(new java.awt.event.ActionListener() {
@@ -3473,7 +3485,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASILTabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        MASILTabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         MASILTabla.setToolTipText("Limpiar Tabla");
         MASILTabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASILTabla.addActionListener(new java.awt.event.ActionListener() {
@@ -3482,7 +3494,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASILessfila.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        MASILessfila.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         MASILessfila.setToolTipText("Eliminar fila");
         MASILessfila.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASILessfila.addActionListener(new java.awt.event.ActionListener() {
@@ -3499,7 +3511,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASICexcel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/guardar_16.png"))); // NOI18N
+        MASICexcel.setIcon(icono("/ImgVisual/guardar_16.png")); // NOI18N
         MASICexcel.setToolTipText("Guardar");
         MASICexcel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASICexcel.addActionListener(new java.awt.event.ActionListener() {
@@ -3608,7 +3620,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         jScrollPane9.setViewportView(MASETabla);
         MASETabla.getColumnModel().getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
 
-        MASELTabla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/limpiar_16.png"))); // NOI18N
+        MASELTabla.setIcon(icono("/ImgVisual/limpiar_16.png")); // NOI18N
         MASELTabla.setToolTipText("Limpiar tabla");
         MASELTabla.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASELTabla.addActionListener(new java.awt.event.ActionListener() {
@@ -3617,7 +3629,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASEAddE.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/add.png"))); // NOI18N
+        MASEAddE.setIcon(icono("/ImgVisual/add.png")); // NOI18N
         MASEAddE.setToolTipText("Agregar estrato");
         MASEAddE.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASEAddE.addActionListener(new java.awt.event.ActionListener() {
@@ -3626,7 +3638,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASELessE.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/less.png"))); // NOI18N
+        MASELessE.setIcon(icono("/ImgVisual/less.png")); // NOI18N
         MASELessE.setToolTipText("Eliminar estrato");
         MASELessE.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASELessE.addActionListener(new java.awt.event.ActionListener() {
@@ -3635,7 +3647,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
             }
         });
 
-        MASETestratificado.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/elementos_teoricos_16.png"))); // NOI18N
+        MASETestratificado.setIcon(icono("/ImgVisual/elementos_teoricos_16.png")); // NOI18N
         MASETestratificado.setToolTipText("Teoria");
         MASETestratificado.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         MASETestratificado.addActionListener(new java.awt.event.ActionListener() {
@@ -3720,11 +3732,11 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
 
         Func.addTab("Muestreo Probabilistico", Muest);
 
-        M_archivo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/archivo_16.png"))); // NOI18N
+        M_archivo.setIcon(icono("/ImgVisual/archivo_16.png")); // NOI18N
         M_archivo.setText("Archivo");
 
         M_cerrar.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F4, java.awt.event.InputEvent.ALT_MASK));
-        M_cerrar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/salir_16.png"))); // NOI18N
+        M_cerrar.setIcon(icono("/ImgVisual/salir_16.png")); // NOI18N
         M_cerrar.setText("Cerrar");
         M_cerrar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3735,10 +3747,10 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
 
         jMenuBar1.add(M_archivo);
 
-        M_herramientas.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/herramientas_16.png"))); // NOI18N
+        M_herramientas.setIcon(icono("/ImgVisual/herramientas_16.png")); // NOI18N
         M_herramientas.setText("Herramientas");
 
-        M_calculadora.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/calculadora_16.png"))); // NOI18N
+        M_calculadora.setIcon(icono("/ImgVisual/calculadora_16.png")); // NOI18N
         M_calculadora.setText("Calculadora");
         M_calculadora.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3747,7 +3759,7 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
         });
         M_herramientas.add(M_calculadora);
 
-        M_TPantalla.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/Keyboard_16.png"))); // NOI18N
+        M_TPantalla.setIcon(icono("/ImgVisual/Keyboard_16.png")); // NOI18N
         M_TPantalla.setText("Teclado en Pantalla");
         M_TPantalla.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3758,10 +3770,10 @@ if(!Character.isDigit(e.getKeyChar()) && e.getKeyChar() !=KeyEvent.VK_BACK_SPACE
 
         jMenuBar1.add(M_herramientas);
 
-        M_soporte.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/soporte_16.png"))); // NOI18N
+        M_soporte.setIcon(icono("/ImgVisual/soporte_16.png")); // NOI18N
         M_soporte.setText("Soporte");
 
-        jMenuItem1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/creditos_16.png"))); // NOI18N
+        jMenuItem1.setIcon(icono("/ImgVisual/creditos_16.png")); // NOI18N
         jMenuItem1.setText("Créditos");
         jMenuItem1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

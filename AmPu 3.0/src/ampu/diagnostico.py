@@ -32,6 +32,11 @@ def verificar_recursos() -> dict:
     ausentes = [str(ruta) for ruta in recursos if not ruta.is_file() or ruta.stat().st_size == 0]
     if ausentes:
         raise RuntimeError("Faltan recursos empaquetados: " + ", ".join(ausentes))
+    import xml.dom.minidom
+    try:
+        xml.dom.minidom.parse(str(icono))  # el icono debe ser SVG/XML bien formado
+    except Exception as exc:
+        raise RuntimeError(f"El icono de la aplicación no es un SVG válido: {exc}") from exc
     lecciones = listar_teoria()
     imagenes = list((DOCUMENTOS.parent / "imagenes").glob("*.png"))
     if len(lecciones) != 57 or len(imagenes) != 31:

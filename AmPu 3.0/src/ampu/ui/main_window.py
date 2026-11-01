@@ -5,14 +5,14 @@ import re
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, QSettings, Qt, QTimer
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QAbstractSpinBox, QApplication, QComboBox, QDialog, QDialogButtonBox,
-    QDockWidget, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton,
-    QScrollArea, QSpinBox, QSplitter, QStackedWidget, QStatusBar,
-    QToolButton, QVBoxLayout, QWidget,
+    QDockWidget, QFileDialog, QFormLayout, QFrame, QGraphicsOpacityEffect,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
+    QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QSplitter,
+    QStackedWidget, QStatusBar, QToolButton, QVBoxLayout, QWidget,
 )
 
 from ampu.docs.teoria import extraer_formula
@@ -489,7 +489,7 @@ class VentanaPrincipal(QMainWindow):
         tamano.setValue(round(100 * self.escala_fuente))
         tamano.setAccessibleName("Escala de texto de 90 a 200 por ciento")
         formulario.addRow("Tamaño de texto", tamano)
-        info = QLabel("Sin animaciones automáticas; las entradas y gráficas siguen siendo editables.")
+        info = QLabel("Transiciones suaves breves al navegar y dibujar gráficas; las entradas y tablas siguen siendo editables.")
         info.setWordWrap(True)
         formulario.addRow("Movimiento", info)
         botones = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -579,6 +579,18 @@ class VentanaPrincipal(QMainWindow):
         self.mensaje(f"{next(t for k, _, t in PAGINAS if k == clave)} · AmPu 3.0")
         QTimer.singleShot(0, self._enfocar_actual)
         return True
+
+    def _transicion_pagina(self, widget: QWidget):
+        """Fundido breve de entrada al cambiar de módulo (no bloquea la navegación)."""
+        efecto = QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(efecto)
+        anim = QPropertyAnimation(efecto, b"opacity", widget)
+        anim.setDuration(170)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.finished.connect(lambda w=widget: w.setGraphicsEffect(None))
+        anim.start(QPropertyAnimation.DeleteWhenStopped)
 
     def _enfocar_actual(self):
         """Al navegar con menú o atajo, deja el foco en el primer campo útil."""

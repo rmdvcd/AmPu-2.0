@@ -6,6 +6,7 @@
 
 package Utiles;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 import javax.swing.JLabel;
@@ -28,11 +29,19 @@ this.tipo=tipo;
 }
 @Override
 public Component getTableCellRendererComponent(JTable table,Object value,boolean selected,boolean focused,int row,int column){
-if(tipo.equals("numerico")){
+if(tipo!=null&&tipo.equals("numerico")){
 this.setHorizontalAlignment(JLabel.CENTER);
-this.setText((String) value);
-this.setFont(normal);
 }
+this.setText(value==null?"":value.toString());
+this.setFont(normal);
+if(selected){
+this.setBackground(new Color(184,207,229));
+this.setForeground(Color.BLACK);
+}else{
+this.setBackground((row%2==0)?Color.WHITE:new Color(240,245,255));
+this.setForeground(new Color(30,30,30));
+}
+this.setOpaque(true);
 return this;
 }
 
