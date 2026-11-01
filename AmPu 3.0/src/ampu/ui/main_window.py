@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from ampu.docs.teoria import extraer_formula
 from ampu.io import ServicioExportacion as io
-from ampu.ui.preferencias_sistema import alto_contraste_windows, factor_fuente_sistema
+from ampu.ui.preferencias_sistema import factor_fuente_sistema
 from ampu.ui.vistas.descriptiva import VistaDescriptiva
 from ampu.ui.vistas.distribuciones import VistaDistribuciones
 from ampu.ui.vistas.inferencia import VistaInferencia
@@ -53,8 +53,11 @@ class VentanaPrincipal(QMainWindow):
         self._instancias.add(self)
         self.preferencias = preferencias or QSettings("AmPu", "AmPu 3.0")
         self.modo_tema = str(self.preferencias.value("interfaz/tema", "sistema"))
-        if self.modo_tema not in ("sistema", "claro", "oscuro", "contraste"):
+        # Preferencias creadas por versiones anteriores se migran sin dejar un
+        # tema ya eliminado activo o inaccesible para cambiar.
+        if self.modo_tema == "contraste" or self.modo_tema not in ("sistema", "claro", "oscuro"):
             self.modo_tema = "sistema"
+            self.preferencias.setValue("interfaz/tema", self.modo_tema)
         try:
             self.escala_fuente = max(.9, min(2.0, float(self.preferencias.value("interfaz/escala", 1.0))))
         except (TypeError, ValueError):
@@ -221,7 +224,7 @@ class VentanaPrincipal(QMainWindow):
 
     @staticmethod
     def _sidebar_label(texto: str) -> QLabel:
-        """Etiqueta de contraste alto dentro de la barra lateral."""
+        """Etiqueta informativa legible sobre la superficie oscura de navegación."""
         label = QLabel(texto)
         label.setObjectName("SidebarInfo")
         label.setWordWrap(True)
@@ -314,7 +317,6 @@ class VentanaPrincipal(QMainWindow):
             ("Seguir apariencia del sistema", "sistema", "Ctrl+F6"),
             ("Tema claro", "claro", "Ctrl+Shift+1"),
             ("Tema oscuro", "oscuro", "Ctrl+Shift+2"),
-            ("Alto contraste", "contraste", "Shift+F6"),
         ):
             accion = self._accion(ver, titulo, atajo, lambda modo=clave: self.aplicar_tema(modo, persistir=True))
             accion.setCheckable(True)
@@ -465,7 +467,7 @@ class VentanaPrincipal(QMainWindow):
         QMessageBox.information(self, "Atajos de AmPu",
             "Ctrl+1…7: secciones · F1: teoría · Ctrl+L: asistente\n"
             "Ctrl+S/O: guardar/abrir · Ctrl+E/P: Excel/PDF · Ctrl+Z/Ctrl+Shift+Z: deshacer/rehacer\n"
-            "Ctrl++/Ctrl+-/Ctrl+0: tamaño del texto · Shift+F6: alto contraste · F11: pantalla completa.\n"
+            "Ctrl++/Ctrl+-/Ctrl+0: tamaño del texto · Ctrl+F6: apariencia del sistema · F11: pantalla completa.\n"
             "Los menús muestran los atajos nativos de esta plataforma.")
 
     def _mostrar_preferencias(self):
@@ -475,8 +477,7 @@ class VentanaPrincipal(QMainWindow):
         formulario = QFormLayout(dialogo)
         tema = QComboBox()
         for titulo, clave in (("Seguir apariencia del sistema", "sistema"),
-                              ("Claro", "claro"), ("Oscuro", "oscuro"),
-                              ("Alto contraste", "contraste")):
+                              ("Claro", "claro"), ("Oscuro", "oscuro")):
             tema.addItem(titulo, clave)
         tema.setCurrentIndex(tema.findData(self.modo_tema))
         tema.setAccessibleName("Tema visual de AmPu")
@@ -630,9 +631,7 @@ class VentanaPrincipal(QMainWindow):
 
     @staticmethod
     def _apariencia_sistema():
-        """Respeta el alto contraste nativo de Windows y la paleta Qt clara/oscura."""
-        if alto_contraste_windows():
-            return "contraste"
+        """Detecta la apariencia clara u oscura expuesta por Qt."""
         try:
             if QApplication.instance().styleHints().colorScheme() == Qt.ColorScheme.Dark:
                 return "oscuro"
@@ -642,29 +641,26 @@ class VentanaPrincipal(QMainWindow):
 
     def aplicar_tema(self, tema: str, *, persistir: bool = False):
         """Sincroniza QSS, gráficos, teoría y fórmula; no anima las transiciones."""
-        if tema not in ("sistema", "claro", "oscuro", "contraste"):
+        if tema not in ("sistema", "claro", "oscuro"):
             return
         self.modo_tema = tema
         efectivo = self._apariencia_sistema() if tema == "sistema" else tema
         self.tema_actual = efectivo
         self.escala_efectiva = min(2.0, max(.9, self.escala_fuente * factor_fuente_sistema(
             QApplication.instance().font().pointSizeF(), sys.platform == "darwin")))
-        base = "oscuro" if efectivo == "contraste" else efectivo
-        css = (ESTILOS / f"{base}.qss").read_text(encoding="utf-8")
-        if efectivo == "contraste":
-            css += "\n" + (ESTILOS / "contraste.qss").read_text(encoding="utf-8")
+        css = (ESTILOS / f"{efectivo}.qss").read_text(encoding="utf-8")
         css = re.sub(r"(font-size:\s*)(\d+(?:\.\d+)?)px",
                      lambda m: f"{m.group(1)}{max(10, round(float(m.group(2)) * self.escala_efectiva))}px", css)
         QApplication.instance().setStyleSheet(css)
-        self.boton_tema.setText("☀  Tema claro" if efectivo == "oscuro" else
-                                 "☾  Tema oscuro" if efectivo == "claro" else "◐  Alto contraste")
-        self.acciones_tema[tema].setChecked(True)
+        self.boton_tema.setText("☀  Tema claro" if efectivo == "oscuro" else "☾  Tema oscuro")
+        if tema in self.acciones_tema:
+            self.acciones_tema[tema].setChecked(True)
         self.asistente.actualizar_tema(efectivo, self.escala_efectiva)
         for vista in self.vistas.values():
             if hasattr(vista, "ajustar_escala"):
                 vista.ajustar_escala(self.escala_efectiva)
             if hasattr(vista, "grafico"):
-                vista.grafico.tema(efectivo != "claro", efectivo == "contraste")
+                vista.grafico.tema(efectivo == "oscuro")
                 if vista.grafico._escala != self.escala_efectiva:
                     vista.grafico.escalar_texto(self.escala_efectiva)
         if "teoria" in self.vistas:
@@ -806,7 +802,10 @@ class VentanaPrincipal(QMainWindow):
             estado = io.cargar(origen)
             vistas = estado.get("vistas", {})
             modulo = estado.get("modulo", "distribuciones")
-            if (estado.get("tema", "claro") not in ("claro", "oscuro", "contraste", "sistema")
+            tema_guardado = estado.get("tema", "sistema")
+            if tema_guardado == "contraste":  # Compatibilidad con sesiones v3 anteriores.
+                tema_guardado = "sistema"
+            if (tema_guardado not in ("claro", "oscuro", "sistema")
                     or not isinstance(vistas, dict)
                     or any(not isinstance(datos, dict) for datos in vistas.values())
                     or modulo not in self.vistas and modulo != "teoria"
@@ -819,7 +818,7 @@ class VentanaPrincipal(QMainWindow):
                         "vistas": {clave: vista.estado() for clave, vista in self.vistas.items()}}
             self._abriendo_sesion = True
             aplicado = True
-            self.aplicar_tema(estado.get("tema", "claro"))
+            self.aplicar_tema(tema_guardado)
             self.asistente.restaurar(estado.get("asistente", {}))
             for clave, datos in vistas.items():
                 if clave == "teoria" and clave not in self.vistas:

@@ -67,7 +67,7 @@ verificacion\salidas\<fecha-hora>\
 |---|---|---|---|
 | `rapido` | Humo tras un cambio pequeño | 5–10 min | entorno, recursos, pytest, SciPy, cálculo abreviado, UI offscreen |
 | `completo` | **Recomendado antes de entregar** | 20–40 min | todo + cobertura + rendimiento + UI nativa + `--self-test` |
-| `visual` | Revisar diseño, temas, contraste y accesibilidad | 5–10 min | capturas en 3 temas, zoom 150/200 %, contraste WCAG, nombres accesibles, KaTeX |
+| `visual` | Revisar diseño, temas, contraste y accesibilidad | 5–10 min | capturas en tema claro y oscuro, zoom 150/200 %, contraste WCAG, nombres accesibles, KaTeX |
 | `rendimiento` | Comparar dos equipos o dos versiones | 15–30 min | benchmarks a escala completa (10 repeticiones) + tiempos de UI |
 | `calculo` | Auditar el motor numérico | 10–20 min | 26 distribuciones, 7 diseños, 16 pruebas, simulación, exportadores, cobertura |
 
@@ -187,13 +187,13 @@ Qué mide u observa:
 1. **Arranque**: tiempo de `QApplication` + plugins y de `VentanaPrincipal` con sus 6 vistas
    y gráficos.
 2. **Cambio de vista + primer resultado** de cada módulo.
-3. **Capturas reales** de 6 vistas × 3 temas (claro, oscuro, alto contraste) más la ventana
+3. **Capturas reales** de 6 vistas × 2 temas (claro y oscuro) más la ventana
    compacta 900×600 y los zooms 150 % y 200 %.
 4. **Huella perceptual** `aHash` de 64 bits por captura, para detectar cambios de estilo
    entre ejecuciones (y comparar con una línea base).
 5. **Contraste WCAG medido sobre píxeles renderizados** de etiquetas y botones visibles.
 6. **Nombres accesibles** de los controles interactivos y política de foco.
-7. **Menús y atajos** (`Ctrl+1…7`, `Ctrl+L`, `Shift+F6`, `Ctrl+0`, `F1`, `F2`, `Ctrl+,`).
+7. **Menús y atajos** (`Ctrl+1…7`, `Ctrl+L`, `Ctrl+F6`, `Ctrl+0`, `F1`, `F2`, `Ctrl+,`).
 8. **WebEngine**: KaTeX, figuras locales, CSS y tema oscuro dentro de Chromium real.
 9. **Exportación desde cada vista** a XLSX/CSV/PNG/PDF y **sesión completa** guardada,
    releída y restaurada (recalcula sola).

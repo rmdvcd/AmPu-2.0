@@ -24,6 +24,19 @@ def ventana(tmp_path):
     app.processEvents()
 
 
+def test_preferencia_antigua_de_alto_contraste_migra_a_sistema(ventana):
+    from ampu.ui.main_window import VentanaPrincipal
+
+    ventana.preferencias.setValue("interfaz/tema", "contraste")
+    nueva = VentanaPrincipal(ventana.preferencias)
+    try:
+        assert nueva.modo_tema == "sistema"
+        assert ventana.preferencias.value("interfaz/tema") == "sistema"
+        assert set(nueva.acciones_tema) == {"sistema", "claro", "oscuro"}
+    finally:
+        nueva.close()
+
+
 def test_menus_y_atajos_descubribles_sin_resultado(ventana):
     menus = [accion.text().replace("&", "") for accion in ventana.menuBar().actions()]
     assert menus == ["Archivo", "Edición", "Ver", "Ventana", "Ayuda"]
@@ -98,10 +111,11 @@ def test_asistente_no_modal_traza_error_copia_y_codigo_editable(ventana, monkeyp
     assert asistente._resultado is None  # no evalúa silenciosamente al restaurar
 
 
-def test_contraste_escalado_y_preferencias_entre_ventanas(ventana):
-    ventana.aplicar_tema("contraste", persistir=True)
-    assert ventana.tema_actual == "contraste" and ventana.acciones_tema["contraste"].isChecked()
-    assert "#FFDF00" in QApplication.instance().styleSheet()
+def test_tema_oscuro_escalado_y_preferencias_entre_ventanas(ventana):
+    ventana.aplicar_tema("oscuro", persistir=True)
+    assert ventana.tema_actual == "oscuro" and ventana.acciones_tema["oscuro"].isChecked()
+    assert "#60D8CA" in QApplication.instance().styleSheet()
+    assert "contraste.qss" not in QApplication.instance().styleSheet()
     ventana.escalar_texto(.3)
     assert ventana.escala_fuente == 1.3
     assert ventana.vistas["distribuciones"].grafico._escala == 1.3
@@ -113,7 +127,7 @@ def test_contraste_escalado_y_preferencias_entre_ventanas(ventana):
     from ampu.ui.main_window import VentanaPrincipal
     nueva = VentanaPrincipal(ajustes)
     nueva.show()
-    assert nueva.modo_tema == "contraste" and nueva.escala_fuente == 1.3
+    assert nueva.modo_tema == "oscuro" and nueva.escala_fuente == 1.3
     nueva.escalar_texto(.7)
     QApplication.instance().processEvents()
     assert nueva.escala_fuente == 2.0

@@ -14,7 +14,9 @@ def test_previsualizacion_latex_escapa_entrada_y_ofrece_mathml():
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
     assert 'id="alternativa"' in html and 'role="status"' in html
     assert 'src="katex.min.js"' in html and "https://" not in html
-    assert 'data-tema="contraste"' in previsualizar_latex("x^2", "contraste")
+    assert 'data-tema="oscuro"' in previsualizar_latex("x^2", "oscuro")
+    with pytest.raises(ParametroInvalidoError):
+        previsualizar_latex("x", "contraste")
 
 
 def test_previsualizacion_acepta_codigo_estructurado_sin_evaluarlo():

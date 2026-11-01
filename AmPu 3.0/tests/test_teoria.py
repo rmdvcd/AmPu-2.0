@@ -31,7 +31,7 @@ def test_todas_las_tecnicas_y_plantilla():
         assert "## Referencias" in texto
         assert "![" in texto
         assert not any(ord(c) < 32 and c != "\n" for c in texto), clave
-    for tema in ("claro", "oscuro", "contraste"):
+    for tema in ("claro", "oscuro"):
         html = renderizar("binomial", tema)
         assert f'data-tema="{tema}"' in html
         assert "auto-render.min.js" in html and "katex.min.js" in html

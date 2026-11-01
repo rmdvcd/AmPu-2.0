@@ -58,9 +58,9 @@ def renderizar(clave: str, tema: str = "claro") -> str:
 
     Args:
         clave: Nombre base de uno de los Markdown empaquetados.
-        tema: ``claro``, ``oscuro`` o ``contraste``.
+        tema: ``claro`` u ``oscuro``.
     """
-    if tema not in ("claro", "oscuro", "contraste"):
+    if tema not in ("claro", "oscuro"):
         raise ValueError("Tema no reconocido.")
     texto = leer_teoria(clave)
     titulo = texto.splitlines()[0].lstrip("# ")

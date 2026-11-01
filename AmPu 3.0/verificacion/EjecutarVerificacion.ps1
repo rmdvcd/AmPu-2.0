@@ -14,7 +14,7 @@
 .PARAMETER Perfil
     rapido       ~5-10 min: humo de cálculo, pytest sin cobertura y UI offscreen.
     completo     Todo lo anterior + cobertura, SciPy, UI nativa si hay escritorio.
-    visual       Capturas en 3 temas, zoom, contraste, accesibilidad y WebEngine.
+    visual       Capturas en temas claro/oscuro, zoom, contraste WCAG y WebEngine.
     rendimiento  Benchmarks del núcleo a escala completa + tiempos de UI.
     calculo      Pruebas numéricas exhaustivas + cobertura + cotejo con SciPy.
 
