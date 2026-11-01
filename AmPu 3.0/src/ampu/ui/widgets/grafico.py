@@ -3,9 +3,9 @@
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QGraphicsOpacityEffect, QLabel, QVBoxLayout, QWidget
 
 from ampu.core.distribuciones.tabla import ResultadoDistribucion
 
