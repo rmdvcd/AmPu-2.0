@@ -114,7 +114,7 @@ def test_asistente_no_modal_traza_error_copia_y_codigo_editable(ventana, monkeyp
 def test_tema_oscuro_escalado_y_preferencias_entre_ventanas(ventana):
     ventana.aplicar_tema("oscuro", persistir=True)
     assert ventana.tema_actual == "oscuro" and ventana.acciones_tema["oscuro"].isChecked()
-    assert "#60D8CA" in QApplication.instance().styleSheet()
+    assert "#67D8CA" in QApplication.instance().styleSheet()  # acento luminoso de oscuro.qss
     assert "contraste.qss" not in QApplication.instance().styleSheet()
     ventana.escalar_texto(.3)
     assert ventana.escala_fuente == 1.3
