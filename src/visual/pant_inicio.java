@@ -23,13 +23,26 @@ public class pant_inicio extends javax.swing.JFrame {
      */
     public pant_inicio() {
         initComponents();
-        ImageIcon imagen1 = new ImageIcon(getClass().getResource("/ImgVisual/icono_ampu.png"));
+        ImageIcon imagen1 = icono("/ImgVisual/icono_ampu.png");
                 this.setIconImage(imagen1.getImage());
         pant_inicio.this.getRootPane().setOpaque(false);
         pant_inicio.this.getContentPane().setBackground(new Color(0,0,0,0));
         pant_inicio.this.setBackground(new Color(0,0,0,0));        
         this.setResizable(false);
         this.setLocationRelativeTo(this);
+    }
+
+    /**
+     * Carga un icono desde los recursos de forma segura: si el recurso no
+     * existe devuelve un icono vacío en lugar de lanzar NullPointerException.
+     */
+    public static ImageIcon icono(String ruta){
+        java.net.URL url=pant_inicio.class.getResource(ruta);
+        if(url==null){
+            Logger.getLogger(pant_inicio.class.getName()).warning("Icono no encontrado: "+ruta);
+            return new ImageIcon();
+        }
+        return new ImageIcon(url);
     }
 
     /**
@@ -54,7 +67,7 @@ public class pant_inicio extends javax.swing.JFrame {
             }
         });
 
-        jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ImgVisual/pant-carga.png"))); // NOI18N
+        jLabel1.setIcon(icono("/ImgVisual/pant-carga.png")); // NOI18N
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -116,6 +129,46 @@ public class pant_inicio extends javax.swing.JFrame {
             }
         });
     }
+/**
+ * Transición animada entre la pantalla de carga y la ventana principal:
+ * fundido de entrada (fade-in) de la aplicación y fundido de salida (fade-out)
+ * de la pantalla de carga.
+ */
+private void transicion(){
+    final Interfaz obj=new Interfaz();
+    obj.setLocationRelativeTo(pant_inicio.this);
+    obj.setOpacity(0f);
+    obj.setVisible(true);
+    javax.swing.Timer entrada=new javax.swing.Timer(30,new java.awt.event.ActionListener(){
+        float op=0f;
+        @Override
+        public void actionPerformed(java.awt.event.ActionEvent e){
+            op+=0.05f;
+            if(op>=1f){
+                obj.setOpacity(1f);
+                ((javax.swing.Timer)e.getSource()).stop();
+            }else{
+                obj.setOpacity(op);
+            }
+        }
+    });
+    entrada.start();
+    javax.swing.Timer salida=new javax.swing.Timer(30,new java.awt.event.ActionListener(){
+        float op=1f;
+        @Override
+        public void actionPerformed(java.awt.event.ActionEvent e){
+            op-=0.05f;
+            if(op<=0f){
+                pant_inicio.this.setOpacity(0f);
+                pant_inicio.this.dispose();
+                ((javax.swing.Timer)e.getSource()).stop();
+            }else{
+                pant_inicio.this.setOpacity(op);
+            }
+        }
+    });
+    salida.start();
+}
 private class hilo extends Thread{
 @Override
 public void run(){
@@ -133,10 +186,7 @@ public void run(){
            break;
            case 45:
                p_barra.setString("Terminando de cargar....");
-       Interfaz obj=new Interfaz();
-        obj.setVisible(true);
-        obj.setLocationRelativeTo(pant_inicio.this);
-        pant_inicio.this.dispose();
+       transicion();
         }
         Thread.sleep(100);
         }
