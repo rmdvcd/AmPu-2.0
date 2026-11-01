@@ -2,6 +2,7 @@
 
 ## Sin publicar · cierre de pendientes de 3.0
 
+- Corregido el arranque: `Grafico` usaba `QGraphicsOpacityEffect`, `QPropertyAnimation` y `QEasingCurve` sin importarlas, por lo que la aplicación fallaba con `NameError` al construir la primera vista. El pie del gráfico ahora ajusta el texto, de modo que la interfaz no genera desplazamiento horizontal al aumentar el tamaño de letra. Prueba de tema oscuro alineada con el acento vigente (`#67D8CA`).
 - Revisión visual de AmPu 3.0: tipografía base y etiquetas más legibles, superficies y controles con mayor separación, estados de foco/selección más visibles, paletas claro/oscuro reforzadas y gráficos adaptados a ambas. Se eliminó el modo de alto contraste; preferencias heredadas migran a «Seguir sistema». El panel de parámetros evita espacio vacío excesivo.
 - Sesiones: se restauran las celdas editadas, el orden de filas y la hoja activa en las seis vistas; las otras hojas editadas ya no desaparecen al cambiar de pestaña. El motor recalcula indicadores/gráficos con la semilla guardada, sin confundir anotaciones de tablas con datos de entrada. Se descartan trabajos anteriores a una restauración, también al cargar una vista sin resultados.
 - Tabla: orden numérico actualizado tras editar una celda; los valores originales de coma flotante e identificadores enteros mantienen su precisión al exportar, aunque el texto en pantalla esté abreviado.
