@@ -34,7 +34,6 @@ class Grafico(QWidget):
         v.addWidget(self.pie)
         v.addWidget(self.descripcion)
         self.oscuro = False
-        self.contraste = False
         self._escala = 1.0
         self._ultimo: tuple | None = None
         self.lienzo.mpl_connect("motion_notify_event", self._mover)
@@ -45,14 +44,13 @@ class Grafico(QWidget):
         if evento.inaxes and evento.xdata is not None and evento.ydata is not None:
             self.lienzo.setToolTip(f"x = {evento.xdata:.5g} · y = {evento.ydata:.5g}")
 
-    def tema(self, oscuro: bool, contraste: bool = False):
+    def tema(self, oscuro: bool):
         """Redibuja la última serie al cambiar de tema."""
         self.oscuro = oscuro
-        self.contraste = contraste
         # Matplotlib consulta la paleta nativa, no QSS, para invertir sus iconos SVG.
         paleta = self.barra.palette()
-        paleta.setColor(self.barra.backgroundRole(), QColor("#000000" if contraste else "#1B2A40" if oscuro else "#FFFFFF"))
-        paleta.setColor(self.barra.foregroundRole(), QColor("#FFFFFF" if oscuro else "#162946"))
+        paleta.setColor(self.barra.backgroundRole(), QColor("#19283B" if oscuro else "#FFFFFF"))
+        paleta.setColor(self.barra.foregroundRole(), QColor("#E8EDF4" if oscuro else "#172B45"))
         self.barra.setPalette(paleta)
         self.barra.update()
         if self._ultimo:
@@ -78,15 +76,15 @@ class Grafico(QWidget):
 
     def _ejes(self):
         """Reinicia ejes y paleta compatibles con fondo claro u oscuro."""
-        fondo = "#000000" if self.contraste else "#1B2A40" if self.oscuro else "#FFFFFF"
-        tinta = "#FFFFFF" if self.contraste else "#DCEBF4" if self.oscuro else "#243D56"
+        fondo = "#19283B" if self.oscuro else "#FFFFFF"
+        tinta = "#E5ECF3" if self.oscuro else "#30445C"
         self.figura.clear()
         self.figura.set_facecolor(fondo)
         ax = self.figura.add_subplot(111)
         ax.set_facecolor(fondo)
         ax.tick_params(colors=tinta, labelsize=10 * self._escala)
         for lado in ax.spines.values():
-            lado.set_color("#FFFFFF" if self.contraste else "#496076" if self.oscuro else "#D8E4ED")
+            lado.set_color("#52647A" if self.oscuro else "#D3DDE7")
         ax.xaxis.label.set_color(tinta)
         ax.yaxis.label.set_color(tinta)
         ax.title.set_color(tinta)
@@ -120,8 +118,8 @@ class Grafico(QWidget):
         self._ultimo = ("distribucion", (resultado, modo), {})
         ax = self._ejes()
         x, y, cdf = resultado.x, resultado.y, resultado.acumulada
-        color = "#FFDF00" if self.contraste else "#4FD1BE" if self.oscuro else "#087E73"
-        gris = "#FFFFFF" if self.contraste else "#7593A8" if self.oscuro else "#A9BAC6"
+        color = "#60D8CA" if self.oscuro else "#087568"
+        gris = "#8294A8" if self.oscuro else "#A9B7C5"
         if modo == "cdf":
             if resultado.discreta:
                 ax.step(x, cdf, where="post", color=color, lw=2.3)
@@ -163,13 +161,13 @@ class Grafico(QWidget):
         ax = self._ejes()
         posicion = np.arange(len(etiquetas))
         ax.bar(posicion-.19, poblacion, width=.38, label="Población",
-               color="#FFFFFF" if self.contraste else "#7494A9")
+               color="#8294A8" if self.oscuro else "#70869B")
         ax.bar(posicion+.19, seleccion, width=.38, label="Muestra",
-               color="#FFDF00" if self.contraste else "#2FC0AC", hatch="//" if self.contraste else None)
+               color="#60D8CA" if self.oscuro else "#087568", hatch="//")
         ax.set_xticks(posicion, etiquetas)
         ax.set_ylabel("Unidades")
         ax.set_title("Diseño muestral")
-        ax.legend(frameon=False, labelcolor="#BED8E3" if self.oscuro else "#304B5B")
+        ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
         self.pie.setText("Las barras reflejan el diseño exportable, no una estimación adicional.")
         self._describir("Barras comparativas de población y muestra por grupo: " +
                        "; ".join(f"{etiqueta}: población {total}, muestra {elegidos}"
@@ -181,7 +179,7 @@ class Grafico(QWidget):
         """Representa resultados categóricos no muestrales."""
         self._ultimo = ("serie", (etiquetas, valores, titulo), {})
         ax = self._ejes()
-        ax.bar(etiquetas, valores, color="#FFDF00" if self.contraste else "#27BDAE", alpha=.95)
+        ax.bar(etiquetas, valores, color="#60D8CA" if self.oscuro else "#087568", alpha=.95)
         ax.set(title=titulo, ylabel="Valor")
         self.pie.setText("Altura de cada barra calculada por el motor estadístico.")
         self._describir(f"{titulo}: gráfico de barras. " +
@@ -196,18 +194,18 @@ class Grafico(QWidget):
         ax = self._ejes()
         if modo == "Boxplot":
             ax.boxplot(datos, vert=False, patch_artist=True,
-                       boxprops={"facecolor": "#FFDF00" if self.contraste else "#35B7AC",
-                                 "edgecolor": "#FFFFFF" if self.contraste else "#70CFC5"},
-                       medianprops={"color": "#000000" if self.contraste else "#F3AA74",
+                       boxprops={"facecolor": "#60D8CA" if self.oscuro else "#4CAFA4",
+                                 "edgecolor": "#D8F2EE" if self.oscuro else "#075F56"},
+                       medianprops={"color": "#142131" if self.oscuro else "#A85219",
                                     "linewidth": 2})
             ax.set_xlabel("Observación")
         elif modo == "Dispersión" and y is not None:
-            ax.scatter(datos, y, s=40, color="#FFDF00" if self.contraste else "#27BDAE",
+            ax.scatter(datos, y, s=40, color="#60D8CA" if self.oscuro else "#087568",
                        alpha=.9, edgecolors="white", linewidths=.4)
             ax.set(xlabel="X", ylabel="Y")
         else:
-            ax.hist(datos, bins="auto", color="#FFDF00" if self.contraste else "#27BDAE",
-                    edgecolor="#FFFFFF" if self.contraste else "#EAF4F4", alpha=.95)
+            ax.hist(datos, bins="auto", color="#60D8CA" if self.oscuro else "#087568",
+                    edgecolor="#25364B" if self.oscuro else "#FFFFFF", alpha=.95)
             ax.set(xlabel="Observación", ylabel="Frecuencia")
         ax.set_title(modo if modo != "Dispersión" or y is not None else "Histograma")
         self.pie.setText("Selecciona, amplía o guarda el gráfico con la barra superior.")
@@ -221,12 +219,12 @@ class Grafico(QWidget):
         """Dispersión y, si existe, línea ya predicha por el motor."""
         self._ultimo = ("dispersion", (x, y, ajuste, titulo), {})
         ax = self._ejes()
-        ax.scatter(x, y, color="#FFDF00" if self.contraste else "#32BDAB", s=35, alpha=.9, label="Observaciones")
+        ax.scatter(x, y, color="#60D8CA" if self.oscuro else "#087568", s=35, alpha=.9, label="Observaciones")
         if ajuste is not None:
             orden = np.argsort(x)
-            ax.plot(x[orden], ajuste[orden], color="#FFFFFF" if self.contraste else "#E29B72",
-                    lw=2.2, ls="--" if self.contraste else "-", label="Ajuste")
-            ax.legend(frameon=False, labelcolor="#BED8E3" if self.oscuro else "#304B5B")
+            ax.plot(x[orden], ajuste[orden], color="#FFB36B" if self.oscuro else "#A85219",
+                    lw=2.2, ls="--", label="Ajuste")
+            ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
         ax.set(xlabel="X", ylabel="Y", title=titulo)
         self.pie.setText("Las predicciones de la línea proceden del motor de regresión.")
         self._describir(f"{titulo}: dispersión de {len(x)} pares observados" +
@@ -239,12 +237,12 @@ class Grafico(QWidget):
         self._ultimo = ("puntos_pi", (puntos, dentro), {})
         ax = self._ejes()
         ax.scatter(puntos[dentro, 0], puntos[dentro, 1], s=8,
-                   color="#FFDF00" if self.contraste else "#30BFAA", alpha=.85, marker="o", label="Dentro")
+                   color="#60D8CA" if self.oscuro else "#087568", alpha=.85, marker="o", label="Dentro")
         ax.scatter(puntos[~dentro, 0], puntos[~dentro, 1], s=8,
-                   color="#FFFFFF" if self.contraste else "#F4A773", alpha=.85, marker="x", label="Fuera")
+                   color="#FFB36B" if self.oscuro else "#B45419", alpha=.85, marker="x", label="Fuera")
         ax.set(xlim=(0, 1), ylim=(0, 1), xlabel="Coordenada U", ylabel="Coordenada V", title="El área del cuarto de círculo")
         ax.set_aspect("equal", adjustable="box")
-        ax.legend(frameon=False, labelcolor="#BED8E3" if self.oscuro else "#304B5B")
+        ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
         self.pie.setText("Verde: dentro · naranja: fuera. Semilla y tamaño reproducibles.")
         self._describir(f"Simulación visual de {len(puntos)} puntos en un cuadrado unitario: "
                        "verde representa dentro del cuarto de círculo y naranja fuera. "
@@ -256,11 +254,11 @@ class Grafico(QWidget):
         self._ultimo = ("comparar", (datos, grid, densidad), {})
         ax = self._ejes()
         ax.hist(datos, bins="auto", density=True,
-                color="#FFDF00" if self.contraste else "#26B8AA", alpha=.7, label="Datos")
-        ax.plot(grid, densidad, lw=2.6, color="#FFFFFF" if self.contraste else "#F3AC77",
-                ls="--" if self.contraste else "-", label="Ajuste")
+                color="#60D8CA" if self.oscuro else "#087568", alpha=.7, label="Datos")
+        ax.plot(grid, densidad, lw=2.6, color="#FFB36B" if self.oscuro else "#A85219",
+                ls="--", label="Ajuste")
         ax.set(title="Datos reales frente a densidad ajustada", xlabel="Valor", ylabel="Densidad")
-        ax.legend(frameon=False, labelcolor="#BED8E3" if self.oscuro else "#304B5B")
+        ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
         self.pie.setText("Compara forma y colas; la p de KS posterior al ajuste es exploratoria.")
         self._describir(f"Histograma de {len(datos)} datos reales junto a la densidad ajustada "
                        "por el motor. La prueba KS posterior al ajuste es exploratoria; "
@@ -271,9 +269,9 @@ class Grafico(QWidget):
         """Compara cuantiles teóricos calculados por el motor con datos reales."""
         self._ultimo = ("qq", (teorico, muestra), {})
         ax = self._ejes()
-        ax.scatter(teorico, muestra, color="#FFDF00" if self.contraste else "#27BDAE", alpha=.9)
+        ax.scatter(teorico, muestra, color="#60D8CA" if self.oscuro else "#087568", alpha=.9)
         ax.plot([teorico.min(), teorico.max()], [muestra.min(), muestra.max()], ls="--",
-                color="#FFFFFF" if self.contraste else "#E49C72")
+                color="#FFB36B" if self.oscuro else "#A85219")
         ax.set(xlabel="Cuantil teórico", ylabel="Cuantil empírico", title="QQ-plot · datos frente al modelo")
         self.pie.setText("Una curva sistemática o colas apartadas sugieren desajuste.")
         self._describir(f"Gráfico de cuantiles teóricos frente a {len(muestra)} cuantiles "

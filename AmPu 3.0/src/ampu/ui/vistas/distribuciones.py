@@ -59,10 +59,15 @@ class VistaDistribuciones(VistaTrabajo):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # El formulario solo ocupa la altura necesaria; la tarjeta no deja una
+        # zona vacía enorme cuando la familia tiene uno o dos parámetros.
+        scroll.setMaximumHeight(230)
         self.formulario = FormularioDistribucion()
         self.formulario.cambiado.connect(self._validar)
+        self.formulario.cambiado.connect(self._ajustar_scroll_parametros)
         scroll.setWidget(self.formulario)
-        panel.addWidget(scroll, 1)
+        self.formulario_scroll = scroll
+        panel.addWidget(scroll)
         panel.addWidget(etiqueta("x  ·  valor a evaluar", "Muted"))
         self.evento = QLineEdit("5")
         self.evento.setAccessibleName("Valor de evento x")
@@ -154,6 +159,11 @@ class VistaDistribuciones(VistaTrabajo):
         self.selector.setCurrentIndex(self.selector.findData("binomial"))
         self.calcular_inicial(150)
         self.vigilar_entradas()
+
+    def _ajustar_scroll_parametros(self, *_):
+        """Adapta la tarjeta al formulario, reservando scroll solo si hace falta."""
+        altura = self.formulario.sizeHint().height() + 12
+        self.formulario_scroll.setFixedHeight(min(230, max(72, altura)))
 
     def _filtrar(self):
         """Filtra el catálogo; modelos nuevos aparecen sin tocar esta vista."""
@@ -278,6 +288,11 @@ class VistaDistribuciones(VistaTrabajo):
         self.limpiar_resultado()
         self._tabla_pendiente = estado.get("tabla")
         self.recalcular_restaurado()
+
+    def ajustar_escala(self, escala: float):
+        """Escala textos y vuelve a calcular la altura útil de parámetros."""
+        super().ajustar_escala(escala)
+        self._ajustar_scroll_parametros()
 
     def tablas_exportables(self) -> dict:
         """Tablas exactamente como se ven, incluidas ediciones/ordenamiento."""

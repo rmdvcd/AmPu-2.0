@@ -25,7 +25,7 @@ def verificar_recursos() -> dict:
     icono = raiz / "ui" / "recursos" / "icono.svg"
     render = PLANTILLA.parent
     recursos = [PLANTILLA, icono, estilos / "claro.qss", estilos / "oscuro.qss",
-                estilos / "contraste.qss", render / "katex.min.js", render / "katex.min.css", render / "auto-render.min.js",
+                render / "katex.min.js", render / "katex.min.css", render / "auto-render.min.js",
                 render / "fonts" / "KaTeX_Main-Regular.woff2",
                 render / "fonts" / "stix-two-math-latin-400-normal.woff2",
                 DOCUMENTOS / "binomial.md", DOCUMENTOS.parent / "imagenes" / "binomial.png"]
@@ -36,7 +36,7 @@ def verificar_recursos() -> dict:
     imagenes = list((DOCUMENTOS.parent / "imagenes").glob("*.png"))
     if len(lecciones) != 57 or len(imagenes) != 31:
         raise RuntimeError(f"Catálogo incompleto: {len(lecciones)} lecciones, {len(imagenes)} imágenes")
-    for tema in ("claro", "oscuro", "contraste"):
+    for tema in ("claro", "oscuro"):
         html = renderizar("binomial", tema)
         formula = previsualizar_latex(r"\frac{x}{2}", tema)
         if f'data-tema="{tema}"' not in html or "formula-bloque" not in html:
@@ -195,14 +195,14 @@ def verificar_webengine(app, captura: str | None = None) -> dict:
         if not formula["mathml"] or formula["lineal"] != r"\frac{\sqrt{2}}{2}" or formula["error"]:
             raise RuntimeError(f"La fórmula estructurada y su alternativa difieren: {formula}")
         cargas_formula.clear()
-        ventana.aplicar_tema("contraste")
+        ventana.aplicar_tema("oscuro")
         if not _esperar_qt(lambda: bool(cargas_formula) and asistente.copiar_mathml_boton.isEnabled(), 10_000):
-            raise RuntimeError("La vista matemática no se actualizó al cambiar a alto contraste")
-        if inspeccionar_formula()["tema"] != "contraste":
-            raise RuntimeError("El contraste no llegó a la vista matemática")
+            raise RuntimeError("La vista matemática no se actualizó al cambiar a tema oscuro")
+        if inspeccionar_formula()["tema"] != "oscuro":
+            raise RuntimeError("El tema oscuro no llegó a la vista matemática")
         return {"webengine": "correcto", "formulas": oscuro["formulas"], "imagenes": len(oscuro["imagenes"]),
                 "tema_oscuro": oscuro["color"], "asistente_mathml": formula["mathml"],
-                "asistente_contraste": "correcto"}
+                "asistente_tema_oscuro": "correcto"}
     finally:
         ventana.close()
         app.processEvents()

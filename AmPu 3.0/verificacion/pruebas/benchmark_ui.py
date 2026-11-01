@@ -2,7 +2,7 @@
 
 Qué hace, con la interfaz real (sin suplentes ni mocks):
   1. Cronometra arranque, cambio de vista y primer resultado de cada módulo.
-  2. Recorre las 7 secciones × 3 temas y captura PNG reales de la ventana.
+  2. Recorre las 7 secciones × 2 temas y captura PNG reales de la ventana.
   3. Calcula una huella perceptual (aHash 64 bits) comparable con una línea base.
   4. Mide contraste efectivo de textos sobre su fondo real (píxeles renderizados).
   5. Audita nombres accesibles de los controles interactivos.
@@ -64,7 +64,7 @@ except Exception as exc:  # ImportError de librerías nativas, plugin Qt, etc.
     ERROR_QT = f"{type(exc).__name__}: {exc}"
 
 VISTAS = ["distribuciones", "muestreo", "descriptiva", "probabilidad", "inferencia", "simulacion"]
-TEMAS = ["claro", "oscuro", "contraste"]
+TEMAS = ["claro", "oscuro"]
 
 
 # --------------------------------------------------------------------------- #
@@ -264,7 +264,7 @@ def main() -> int:
     r.verdadero("ui.menus", cat_, "La barra de menús contiene Archivo/Edición/Ver/Ventana/Ayuda",
                 menus == ["Archivo", "Edición", "Ver", "Ventana", "Ayuda"], obtenido=menus)
     atajos = {accion.shortcut().toString() for accion in ventana.findChildren(type(ventana.accion_asistente))}
-    requeridos = {"Ctrl+1", "Ctrl+7", "Ctrl+L", "Shift+F6", "Ctrl+0", "F1", "F2", "Ctrl+,"}
+    requeridos = {"Ctrl+1", "Ctrl+7", "Ctrl+L", "Ctrl+F6", "Ctrl+0", "F1", "F2", "Ctrl+,"}
     r.verdadero("ui.atajos", cat_, "Los atajos documentados están registrados en acciones",
                 requeridos.issubset(atajos), obtenido=sorted(a for a in atajos if a),
                 esperado=sorted(requeridos), notas="QKeySequence.toString()")

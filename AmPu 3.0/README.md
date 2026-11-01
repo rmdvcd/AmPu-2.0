@@ -4,8 +4,6 @@
 
 ![Explorador de distribuciones en tema claro](docs/capturas/01_distribuciones_claro.png)
 
-[![Alto contraste y asistente no modal](docs/capturas/05_accesibilidad_contraste.png)](docs/capturas/05_accesibilidad_contraste.png)
-
 | Diseño muestral | Inferencia | Tema oscuro |
 |---|---|---|
 | [![Muestreo](docs/capturas/02_muestreo_claro.png)](docs/capturas/02_muestreo_claro.png) | [![Inferencia](docs/capturas/03_inferencia_claro.png)](docs/capturas/03_inferencia_claro.png) | [![Distribuciones, tema oscuro](docs/capturas/04_distribuciones_oscuro.png)](docs/capturas/04_distribuciones_oscuro.png) |
@@ -42,14 +40,14 @@ También se instala el comando `ampu`. `python -m ampu --version` funciona inclu
 - **Descriptiva y probabilidad:** frecuencias, tendencia central, dispersión, percentiles, combinatoria exacta, probabilidades condicional y total, Bayes, esperanza, varianza y MGF.
 - **Inferencia:** 16 técnicas entre z/t de una/dos muestras, z de proporciones, chi-cuadrado, ANOVA, Pearson/Spearman, regresión simple/múltiple, Mann–Whitney, Wilcoxon y Kruskal–Wallis; intervalos de confianza y conclusiones que distinguen «no se rechaza» de «se acepta». La prueba KS posterior a un ajuste se marca **exploratoria**, sin corrección por estimación.
 - **Simulación:** π, integración Monte Carlo, muestras, ajuste por máxima verosimilitud de cinco familias y QQ-plot con datos reales; intervalos y errores estándar donde corresponde.
-- **Teoría:** 57 lecciones Markdown+LaTeX, 31 figuras, KaTeX 0.16.22 y STIX Two Math locales con temas claro/oscuro/alto contraste, índice y búsqueda en `QWebEngineView`. El asistente evalúa solo aritmética numérica mediante AST restringido; su editor LaTeX genera MathML sin invocar procesos externos.
+- **Teoría:** 57 lecciones Markdown+LaTeX, 31 figuras, KaTeX 0.16.22 y STIX Two Math locales con temas claro y oscuro, índice y búsqueda en `QWebEngineView`. El asistente evalúa solo aritmética numérica mediante AST restringido; su editor LaTeX genera MathML sin invocar procesos externos.
 
 La **UI no implementa las fórmulas**: prepara entradas, envía trabajos a hilos Qt y presenta la salida calculada por `core/`. NumPy/SciPy/pandas ejecutan los métodos; Matplotlib QtAgg, PySide6, openpyxl y ReportLab cubren presentación y exportaciones.
 
 ## Accesibilidad, teclado y recuperación
 
-- **Menús completos** Archivo/Edición/Ver/Ventana/Ayuda, con roles App nativos de Qt en macOS (pendiente confirmar en macOS real). Acciones con atajos visibles y estándar Ctrl/Cmd; `F2` muestra los más usados. Edición se aplica al campo/tabla enfocado y la misma acción Exportar gobierna botón y menú. `Ctrl+,` abre Preferencias; `Shift+F6` activa alto contraste; `Ctrl++`, `Ctrl+-` y `Ctrl+0` ajustan/restablecen el texto entre 90 % y 200 %.
-- El modo **Seguir sistema** usa color claro/oscuro de Qt, fuente de la aplicación y la bandera de alto contraste de Windows cuando está disponible; en macOS/Linux el alto contraste también se puede seleccionar **manualmente**. Sin animaciones obligatorias. Formularios y KPI refluyen, las vistas analíticas desplazan contenido verticalmente, el panel lateral puede plegarse y, si el espacio a zoom alto no alcanza, el asistente pasa a ventana flotante. Las gráficas incluyen ejes, texto descriptivo, tabla alternativa y no se exportan cuando las entradas cambiaron sin recalcular.
+- **Menús completos** Archivo/Edición/Ver/Ventana/Ayuda, con roles App nativos de Qt en macOS (pendiente confirmar en macOS real). Acciones con atajos visibles y estándar Ctrl/Cmd; `F2` muestra los más usados. Edición se aplica al campo/tabla enfocado y la misma acción Exportar gobierna botón y menú. `Ctrl+,` abre Preferencias; `Ctrl+F6` sigue la apariencia del sistema; `Ctrl++`, `Ctrl+-` y `Ctrl+0` ajustan/restablecen el texto entre 90 % y 200 %.
+- Solo hay temas **claro y oscuro**, con colores de texto, foco y superficies revisados para WCAG AA; se retiró el modo de alto contraste. **Seguir sistema** detecta el esquema claro/oscuro de Qt. Las preferencias antiguas de alto contraste se migran automáticamente a este modo. Sin animaciones obligatorias. Formularios y KPI refluyen, las vistas analíticas desplazan contenido verticalmente, el panel lateral puede plegarse y, si el espacio a zoom alto no alcanza, el asistente pasa a ventana flotante. Las gráficas incluyen ejes, texto descriptivo, tabla alternativa y no se exportan cuando las entradas cambiaron sin recalcular.
 - Deshacer/rehacer y copiar/pegar funcionan en texto/tabla; los cambios en tablas **son anotaciones**, no cálculos. Una sesión guardada incluye entradas a medio escribir y fórmulas editables. Al abrir o cerrar con cambios pendientes se pregunta antes de perderlos; una carga fallida intenta volver al estado anterior. Salir comprueba todas las ventanas antes de cerrar alguna.
 - **Puerta de publicación:** pruebas reales en Windows, macOS y Linux con QtWebEngine, lector de pantalla (NVDA/JAWS/VoiceOver), teclado y preferencias de accesibilidad de cada SO. El sandbox sin bibliotecas NSS/X11/GL no permite certificar el MathML ni el foco nativo; consulta la [auditoría UI/UX/IX con evidencias, severidades y criterios de aceptación](docs/AUDITORIA_UI_UX_IX.md). No atribuir estas comprobaciones al test offscreen.
 
