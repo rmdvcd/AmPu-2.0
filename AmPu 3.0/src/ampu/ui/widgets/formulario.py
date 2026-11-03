@@ -1,119 +1,112 @@
-"""Formulario generado desde metadatos; no duplica reglas estadísticas."""
+"""Formulario Dear PyGui generado desde los metadatos del registro."""
+
+from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QDoubleSpinBox, QFormLayout, QLineEdit, QSpinBox, QWidget
+import dearpygui.dearpygui as dpg
 
 from ampu.core.distribuciones.base import Distribucion
 from ampu.core.errores import ParametroInvalidoError
 
 
-class FormularioDistribucion(QWidget):
-    """Controles creados/reemplazados al cambiar la distribución registrada."""
+class FormularioDistribucion:
+    """Crea editores Dear PyGui sin duplicar reglas estadísticas."""
 
-    cambiado = Signal()
-
-    def __init__(self, parent=None):
-        """Comienza sin distribución, a la espera de la elección del usuario."""
-        super().__init__(parent)
-        self.formulario = QFormLayout(self)
-        self.formulario.setContentsMargins(0, 0, 0, 0)
-        self.formulario.setSpacing(10)
-        self.controles: dict[str, QWidget] = {}
+    def __init__(self, parent: int | str | None = None,
+                 cambiado: Callable[..., None] | None = None):
         self.modelo: Distribucion | None = None
-        self._escala = 1.0
+        self.controles: dict[str, int | str] = {}
+        self._tipos: dict[str, str] = {}
+        self.cambiado = cambiado
+        self.tag = dpg.add_group(parent=parent) if parent is not None else None
 
-    def ajustar_escala(self, escala: float):
-        """Evita que el scroll comprima editores por debajo de su tamaño útil."""
-        self._escala = escala
-        self.formulario.setRowWrapPolicy(QFormLayout.WrapAllRows if escala >= 1.4
-                                         else QFormLayout.DontWrapRows)
-        self._ajustar_altura()
+    def montar(self, parent: int | str) -> None:
+        if self.tag is None:
+            self.tag = dpg.add_group(parent=parent)
 
-    def _ajustar_altura(self):
-        for control in self.controles.values():
-            control.setMinimumHeight(max(34, round(28 * self._escala) + 14))
-        self.formulario.invalidate()
-        self.setMinimumHeight(self.sizeHint().height())
+    def _cambio(self, *_args) -> None:
+        if self.cambiado is not None:
+            self.cambiado()
 
-    def usar(self, modelo: Distribucion):
-        """Crea controles para cada ``Parametro`` del modelo elegido."""
-        while self.formulario.count():
-            elemento = self.formulario.takeAt(0)
-            if elemento.widget():
-                # deleteLater espera al bucle Qt; ocultar ya evita campos
-                # fantasma al cambiar rápidamente de distribución.
-                elemento.widget().hide()
-                elemento.widget().deleteLater()
+    def usar(self, modelo: Distribucion) -> None:
+        """Reemplaza los campos al cambiar de distribución."""
+        if self.tag is None:
+            raise RuntimeError("Monta el formulario en un contenedor Dear PyGui primero.")
+        dpg.delete_item(self.tag, children_only=True, slot=1)
         self.controles.clear()
+        self._tipos.clear()
         self.modelo = modelo
         for campo in modelo.parametros:
+            nombre = campo.nombre
+            etiqueta = nombre.replace("_", " ")
             if campo.tipo.startswith("vector_"):
-                widget = QLineEdit(", ".join(map(str, campo.default)))
-                widget.setPlaceholderText("Valores separados por comas")
-                widget.textChanged.connect(self.cambiado)
+                inicial = ", ".join(map(str, campo.default))
+                control = dpg.add_input_text(parent=self.tag, label=etiqueta, default_value=inicial,
+                                             hint="Valores separados por comas", width=275,
+                                             callback=self._cambio)
             elif campo.tipo == "entero":
-                widget = QSpinBox()
                 minimo = math.ceil(campo.minimo) if campo.minimo is not None else -1_000_000
                 maximo = math.floor(campo.maximo) if campo.maximo is not None else 1_000_000
-                widget.setRange(max(-1_000_000, minimo), min(1_000_000, maximo))
-                widget.setValue(int(campo.default))
-                widget.valueChanged.connect(self.cambiado)
+                control = dpg.add_input_int(parent=self.tag, label=etiqueta,
+                                            default_value=int(campo.default),
+                                            min_value=max(-1_000_000, minimo),
+                                            max_value=min(1_000_000, maximo), width=275,
+                                            callback=self._cambio)
             else:
-                widget = QDoubleSpinBox()
-                widget.setDecimals(10)
-                widget.setRange(max(-1e12, campo.minimo if campo.minimo is not None else -1e12),
-                                min(1e12, campo.maximo if campo.maximo is not None else 1e12))
-                widget.setSingleStep(.1 if campo.minimo is not None and campo.maximo is not None else .5)
-                widget.setValue(float(campo.default))
-                widget.valueChanged.connect(self.cambiado)
-            widget.setToolTip(campo.descripcion)
-            widget.setAccessibleName(f"Parámetro {campo.nombre.replace('_', ' ')}")
-            widget.setAccessibleDescription(campo.descripcion)
-            widget.setMinimumHeight(34)
-            self.formulario.addRow(campo.nombre.replace("_", " ") + "  ·", widget)
-            self.controles[campo.nombre] = widget
-        self._ajustar_altura()
-        self.cambiado.emit()
+                minimo = campo.minimo if campo.minimo is not None else -1e12
+                maximo = campo.maximo if campo.maximo is not None else 1e12
+                control = dpg.add_input_double(parent=self.tag, label=etiqueta,
+                                               default_value=float(campo.default),
+                                               min_value=max(-1e12, minimo),
+                                               max_value=min(1e12, maximo), format="%.10g",
+                                               step=.1, width=275, callback=self._cambio)
+            with dpg.tooltip(control):
+                dpg.add_text(campo.descripcion, wrap=330)
+            self.controles[nombre] = control
+            self._tipos[nombre] = campo.tipo
+        self._cambio()
 
     def valores(self) -> dict:
-        """Lee campos y delega validación de rango/coherencia al modelo."""
         if self.modelo is None:
             raise ParametroInvalidoError("Selecciona una distribución.")
-        salida = {}
+        salida: dict[str, object] = {}
         for campo in self.modelo.parametros:
-            widget = self.controles[campo.nombre]
-            if isinstance(widget, QLineEdit):
+            control = self.controles[campo.nombre]
+            if campo.tipo.startswith("vector_"):
                 try:
-                    salida[campo.nombre] = [float(x.strip()) for x in widget.text().split(",")]
+                    salida[campo.nombre] = [float(x.strip()) for x in str(dpg.get_value(control)).split(",")]
                 except ValueError as exc:
-                    raise ParametroInvalidoError(f"{campo.nombre}: separa números con comas y usa punto decimal.") from exc
+                    raise ParametroInvalidoError(
+                        f"{campo.nombre}: separa números con comas y usa punto decimal.") from exc
             else:
-                salida[campo.nombre] = widget.value()
+                salida[campo.nombre] = dpg.get_value(control)
         return self.modelo.validar(**salida)
 
     def estado(self) -> dict:
-        """Captura entradas aun si son incompletas: guardar jamás las pierde."""
-        salida = {}
-        for nombre, widget in self.controles.items():
-            if isinstance(widget, QLineEdit):
+        """Conserva incluso una lista vectorial parcialmente escrita."""
+        salida: dict[str, object] = {}
+        for nombre, control in self.controles.items():
+            actual = dpg.get_value(control)
+            if self._tipos[nombre].startswith("vector_"):
                 try:
-                    salida[nombre] = [float(parte.strip()) for parte in widget.text().split(",")]
+                    salida[nombre] = [float(parte.strip()) for parte in str(actual).split(",")]
                 except ValueError:
-                    salida[nombre] = widget.text()
+                    salida[nombre] = str(actual)
             else:
-                salida[nombre] = widget.value()
+                salida[nombre] = actual
         return salida
 
-    def restaurar(self, valores: dict):
-        """Carga valores previos en los controles actualmente construidos."""
-        for nombre, valor in valores.items():
+    def restaurar(self, valores: dict) -> None:
+        for nombre, contenido in valores.items():
             if nombre not in self.controles:
                 continue
-            control = self.controles[nombre]
-            if isinstance(control, QLineEdit):
-                control.setText(valor if isinstance(valor, str) else ", ".join(map(str, valor)))
-            else:
-                control.setValue(valor)
-        self.cambiado.emit()
+            if self._tipos[nombre].startswith("vector_") and not isinstance(contenido, str):
+                contenido = ", ".join(map(str, contenido))
+            dpg.set_value(self.controles[nombre], contenido)
+        self._cambio()
+
+    def habilitar(self, activo: bool) -> None:
+        for control in self.controles.values():
+            dpg.configure_item(control, enabled=activo)

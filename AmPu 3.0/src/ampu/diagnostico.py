@@ -1,8 +1,6 @@
-"""Autoprueba del paquete y de la lección web, sin depender de pytest.
+"""Autopruebas de recursos y de la interfaz Dear PyGui sin depender de pytest."""
 
-``--verify-resources`` comprueba un ejecutable incluso sin escritorio gráfico.
-``--self-test`` exige QtWebEngine funcional y un entorno de escritorio completo.
-"""
+from __future__ import annotations
 
 import math
 import sys
@@ -11,7 +9,7 @@ from pathlib import Path
 
 
 def verificar_recursos() -> dict:
-    """Comprueba contenido distribuido, rutas relativas y los cuatro exportadores."""
+    """Comprueba contenido distribuido, teoría y los cuatro exportadores."""
     from matplotlib.figure import Figure
     from openpyxl import load_workbook
     import pandas as pd
@@ -21,12 +19,10 @@ def verificar_recursos() -> dict:
     from ampu.io import ServicioExportacion as io
 
     raiz = DOCUMENTOS.parent.parent
-    estilos = raiz / "ui" / "estilos"
     icono = raiz / "ui" / "recursos" / "icono.svg"
     render = PLANTILLA.parent
-    recursos = [PLANTILLA, icono, estilos / "claro.qss", estilos / "oscuro.qss",
-                render / "katex.min.js", render / "katex.min.css", render / "auto-render.min.js",
-                render / "fonts" / "KaTeX_Main-Regular.woff2",
+    recursos = [PLANTILLA, icono, render / "katex.min.js", render / "katex.min.css",
+                render / "auto-render.min.js", render / "fonts" / "KaTeX_Main-Regular.woff2",
                 render / "fonts" / "stix-two-math-latin-400-normal.woff2",
                 DOCUMENTOS / "binomial.md", DOCUMENTOS.parent / "imagenes" / "binomial.png"]
     ausentes = [str(ruta) for ruta in recursos if not ruta.is_file() or ruta.stat().st_size == 0]
@@ -34,7 +30,7 @@ def verificar_recursos() -> dict:
         raise RuntimeError("Faltan recursos empaquetados: " + ", ".join(ausentes))
     import xml.dom.minidom
     try:
-        xml.dom.minidom.parse(str(icono))  # el icono debe ser SVG/XML bien formado
+        xml.dom.minidom.parse(str(icono))
     except Exception as exc:
         raise RuntimeError(f"El icono de la aplicación no es un SVG válido: {exc}") from exc
     lecciones = listar_teoria()
@@ -45,9 +41,9 @@ def verificar_recursos() -> dict:
         html = renderizar("binomial", tema)
         formula = previsualizar_latex(r"\frac{x}{2}", tema)
         if f'data-tema="{tema}"' not in html or "formula-bloque" not in html:
-            raise RuntimeError(f"La plantilla de teoría {tema} no se pudo renderizar")
+            raise RuntimeError(f"La plantilla documental {tema} no se pudo renderizar")
         if "htmlAndMathml" not in formula or "katex.min.js" not in formula:
-            raise RuntimeError(f"Faltan recursos para la vista matemática {tema}")
+            raise RuntimeError(f"Faltan recursos documentales {tema}")
 
     with tempfile.TemporaryDirectory(prefix="ampu-autoprueba-") as temporal:
         carpeta = Path(temporal)
@@ -55,8 +51,7 @@ def verificar_recursos() -> dict:
         figura = Figure(figsize=(2, 2))
         figura.subplots().plot([0, 1], [0, 1])
         archivos = [io.excel({"Prueba": tabla}, carpeta / "prueba.xlsx"),
-                    io.csv(tabla, carpeta / "prueba.csv"),
-                    io.png(figura, carpeta / "prueba.png"),
+                    io.csv(tabla, carpeta / "prueba.csv"), io.png(figura, carpeta / "prueba.png"),
                     io.pdf(carpeta / "prueba.pdf", "Autoprueba", "Funciona sin red", {"Prueba": tabla}, figura)]
         io.guardar({"semilla": 42}, carpeta / "sesion.json")
         if io.cargar(carpeta / "sesion.json")["semilla"] != 42:
@@ -65,149 +60,39 @@ def verificar_recursos() -> dict:
             raise RuntimeError("Algún exportador no generó un archivo")
         excel = load_workbook(archivos[0], read_only=True)
         try:
-            # XLSX/Excel conserva aproximadamente 15 dígitos decimales.
             if not math.isclose(excel.active["A2"].value, tabla.iloc[0, 0], rel_tol=0, abs_tol=5e-16):
                 raise RuntimeError("Se perdió precisión al exportar Excel")
         finally:
             excel.close()
-
-    reporte = {"recursos": "correctos", "lecciones": len(lecciones), "imagenes": len(imagenes),
-               "formatos": ["xlsx", "csv", "png", "pdf", "json"], "congelado": bool(getattr(sys, "frozen", False))}
-    if getattr(sys, "frozen", False):
-        # En macOS el helper puede residir fuera de _MEIPASS, en la misma .app.
-        paquete = (Path(sys.executable).resolve().parents[2] if sys.platform == "darwin"
-                   else Path(sys._MEIPASS))
-        helper = next((p for p in paquete.rglob("QtWebEngineProcess*") if p.is_file()), None)
-        recursos_web = next(paquete.rglob("qtwebengine_resources.pak"), None)
-        if helper is None or recursos_web is None:
-            raise RuntimeError("El paquete no incluye QtWebEngineProcess y sus recursos Chromium")
-        reporte["webengine_empaquetado"] = "helper y Chromium presentes (no implica verificación visual)"
-    return reporte
+    return {"recursos": "correctos", "lecciones": len(lecciones), "imagenes": len(imagenes),
+            "formatos": ["xlsx", "csv", "png", "pdf", "json"],
+            "congelado": bool(getattr(sys, "frozen", False)), "ui": "Dear PyGui"}
 
 
-def _esperar_qt(condicion, milisegundos: int = 20_000) -> bool:
-    """Procesa señales WebEngine con plazo explícito en vez de bloquear la UI."""
-    from PySide6.QtCore import QEventLoop, QTimer
+def verificar_interfaz(ventana) -> dict:
+    """Ejercita la UI real sin viewport: widgets, motor, teoría y asistente."""
+    import dearpygui.dearpygui as dpg
 
-    ciclo = QEventLoop()
-    vencido = False
-
-    def agotar():
-        nonlocal vencido
-        vencido = True
-        ciclo.quit()
-
-    limite = QTimer()
-    limite.setSingleShot(True)
-    limite.timeout.connect(agotar)
-    limite.start(milisegundos)
-
-    def comprobar():
-        if condicion():
-            ciclo.quit()
-        else:
-            QTimer.singleShot(40, comprobar)
-
-    QTimer.singleShot(0, comprobar)
-    ciclo.exec()
-    limite.stop()
-    return not vencido
-
-
-def verificar_webengine(app, captura: str | None = None) -> dict:
-    """Verifica en Chromium real HTML, KaTeX, figura local, CSS y tema oscuro.
-
-    No usa capturas sintéticas: ``captura`` es opcional para revisión visual.
-    """
-    import ampu.ui.vistas.teoria  # import nativo estricto, sin diálogo modal
-    from ampu.ui.main_window import VentanaPrincipal
-
-    ventana = VentanaPrincipal()
-    ventana.show()
-    try:
-        distribuciones = ventana.vistas["distribuciones"]
-        if not _esperar_qt(lambda: distribuciones.ultimo is not None and not distribuciones._ocupado):
-            raise RuntimeError("La ventana no terminó su primer cálculo")
-        ventana.cambiar("teoria")
-        vista = ventana.vistas["teoria"]
-        cargas: list[bool] = []
-        vista.navegador.loadFinished.connect(lambda exito: cargas.append(exito))
-        if not _esperar_qt(lambda: bool(cargas)) or not cargas[-1]:
-            raise RuntimeError("WebEngine no inició; comprueba NSS, QtWebEngineProcess y X11")
-        cargas.clear()
-        vista.seleccionar("binomial")
-        if not _esperar_qt(lambda: bool(cargas)) or not cargas[-1]:
-            raise RuntimeError("WebEngine no cargó la lección binomial local")
-
-        javascript = """(() => ({
-          titulo: document.querySelector('#contenido h1')?.textContent || '',
-          formulas: document.querySelectorAll('#contenido .katex').length,
-          errores: document.querySelectorAll('#contenido .katex-error').length,
-          imagenes: [...document.querySelectorAll('#contenido img')].map(i => i.complete && i.naturalWidth > 0),
-          tema: document.documentElement.dataset.tema,
-          css: [...document.styleSheets].some(s => s.href && s.href.includes('katex.min.css')),
-          color: getComputedStyle(document.body).backgroundColor
-        }))()"""
-
-        def evaluar():
-            salidas = []
-            vista.navegador.page().runJavaScript(javascript, salidas.append)
-            if not _esperar_qt(lambda: bool(salidas), 6_000) or not isinstance(salidas[0], dict):
-                raise RuntimeError("WebEngine no devolvió el estado del DOM")
-            return salidas[0]
-
-        datos = evaluar()
-        if ("binomial" not in datos["titulo"].lower() or datos["formulas"] < 3
-                or datos["errores"] or not datos["imagenes"] or not all(datos["imagenes"]) or not datos["css"]):
-            raise RuntimeError(f"KaTeX, CSS o imagen local no renderizaron: {datos}")
-        cargas.clear()
-        ventana.aplicar_tema("oscuro")
-        if not _esperar_qt(lambda: bool(cargas)) or not cargas[-1]:
-            raise RuntimeError("WebEngine no volvió a cargar el tema oscuro")
-        oscuro = evaluar()
-        if oscuro["tema"] != "oscuro" or oscuro["formulas"] < 3 or oscuro["color"] == datos["color"]:
-            raise RuntimeError(f"La paleta oscura no se aplicó al DOM: {oscuro}")
-
-        if captura:
-            ruta = Path(captura)
-            ruta.parent.mkdir(parents=True, exist_ok=True)
-            app.processEvents()
-            if not ventana.grab().save(str(ruta), "PNG"):
-                raise RuntimeError(f"No se pudo capturar {ruta}")
-
-        ventana.calculadora()
-        asistente = ventana.asistente
-        asistente.pestanas.setCurrentIndex(1)
-        if asistente._navegador is None:
-            raise RuntimeError("El asistente no inició QtWebEngine local")
-        cargas_formula: list[bool] = []
-        asistente._navegador.loadFinished.connect(cargas_formula.append)
-        asistente.latex.setPlainText(r"\frac{\sqrt{2}}{2}")
-        if not _esperar_qt(lambda: bool(cargas_formula) and asistente.copiar_mathml_boton.isEnabled(), 10_000):
-            raise RuntimeError("KaTeX del asistente no generó MathML")
-        def inspeccionar_formula():
-            salidas = []
-            asistente._navegador.page().runJavaScript("""(() => ({
-              mathml: !!document.querySelector('#formula math'),
-              lineal: document.querySelector('#fuente')?.textContent || '',
-              error: document.querySelector('#estado')?.textContent || '',
-              tema: document.documentElement.dataset.tema
-            }))()""", salidas.append)
-            if not _esperar_qt(lambda: bool(salidas), 6_000):
-                raise RuntimeError("La vista de fórmula no devolvió su DOM")
-            return salidas[0]
-        formula = inspeccionar_formula()
-        if not formula["mathml"] or formula["lineal"] != r"\frac{\sqrt{2}}{2}" or formula["error"]:
-            raise RuntimeError(f"La fórmula estructurada y su alternativa difieren: {formula}")
-        cargas_formula.clear()
-        ventana.aplicar_tema("oscuro")
-        if not _esperar_qt(lambda: bool(cargas_formula) and asistente.copiar_mathml_boton.isEnabled(), 10_000):
-            raise RuntimeError("La vista matemática no se actualizó al cambiar a tema oscuro")
-        if inspeccionar_formula()["tema"] != "oscuro":
-            raise RuntimeError("El tema oscuro no llegó a la vista matemática")
-        return {"webengine": "correcto", "formulas": oscuro["formulas"], "imagenes": len(oscuro["imagenes"]),
-                "tema_oscuro": oscuro["color"], "asistente_mathml": formula["mathml"],
-                "asistente_tema_oscuro": "correcto"}
-    finally:
-        ventana.close()
-        app.processEvents()
+    modulos = ("distribuciones", "muestreo", "descriptiva", "probabilidad", "inferencia", "simulacion")
+    for clave in modulos:
+        if not ventana.cambiar(clave) or not ventana.esperar(30):
+            raise RuntimeError(f"La vista {clave} no terminó su cálculo")
+        vista = ventana.vistas[clave]
+        if vista.ultimo is None or vista.tabla.rowCount() == 0 or not vista.tablas_exportables():
+            raise RuntimeError(f"La vista {clave} no produjo resultados exportables")
+        if not vista.grafico.figura.axes or not vista.resumen_exportable():
+            raise RuntimeError(f"La vista {clave} no produjo gráfico y resumen")
+    ventana.abrir_teoria("binomial")
+    if "Binomial" not in str(dpg.get_value(ventana.vistas["teoria"].contenido)):
+        raise RuntimeError("La biblioteca Dear PyGui no cargó la lección binomial")
+    ventana.calculadora()
+    dpg.set_value(ventana.asistente.entrada, "sqrt(2)+sin(pi/2)")
+    ventana.asistente._evaluar()
+    if ventana.asistente._resultado is None:
+        raise RuntimeError("El asistente no evaluó su expresión de autoprueba")
+    ventana.aplicar_tema("oscuro")
+    if ventana.tema_actual != "oscuro":
+        raise RuntimeError("No se aplicó el tema oscuro")
+    ventana.aplicar_tema("claro")
+    return {"interfaz": "Dear PyGui correcta", "modulos": len(modulos),
+            "teoria": "texto y figura local", "asistente": "correcto", "temas": ["claro", "oscuro"]}

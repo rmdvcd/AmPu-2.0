@@ -1,74 +1,56 @@
-"""Capturas reales de QWidget final con resultados (requiere entorno gráfico Qt).
+"""Capturas genuinas del viewport Dear PyGui (requiere entorno gráfico)."""
 
-En CI headless con bibliotecas gráficas del SO instaladas:
-QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 python scripts/capturar_ui.py
-"""
+from __future__ import annotations
 
-import sys
+import time
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("QtAgg")
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication
+matplotlib.use("Agg", force=True)
+import dearpygui.dearpygui as dpg
 
 from ampu.ui.main_window import VentanaPrincipal
+from ampu.ui.preferencias import Preferencias
 
 DESTINO = Path(__file__).resolve().parents[1] / "docs" / "capturas"
 
 
-def main():
-    """Espera trabajos asíncronos y guarda PNG genuinos, sin datos simulados de UI."""
+def main() -> int:
     DESTINO.mkdir(parents=True, exist_ok=True)
-    app = QApplication(sys.argv[:1])
-    ventana = VentanaPrincipal()
-    ventana.resize(1440, 900)
-    ventana.show()
-    pasos = [("distribuciones", "01_distribuciones_claro.png", "claro"),
-             ("muestreo", "02_muestreo_claro.png", "claro"),
-             ("inferencia", "03_inferencia_claro.png", "claro"),
-             ("distribuciones", "04_distribuciones_oscuro.png", "oscuro")]
-    intentos = 0
-
-    def siguiente():
-        nonlocal intentos
-        if not pasos:
-            print("Capturas guardadas en", DESTINO)
-            app.quit()
-            return
-        clave, archivo, tema = pasos[0]
-        ventana.aplicar_tema(tema)
-        ventana.cambiar(clave)
-        vista = ventana.vista
-        if clave == "inferencia" and vista.ultimo is None and not vista._ocupado:
-            for indice in range(vista.tipo.count()):
-                if vista.tipo.itemData(indice)[0] == "t_dos":
-                    vista.tipo.setCurrentIndex(indice)
-                    break
-            vista.calcular()
-        if vista._ocupado or vista.ultimo is None:
-            intentos += 1
-            if intentos > 90:
-                raise RuntimeError(f"No terminó el cálculo para {clave}.")
-            QTimer.singleShot(150, siguiente)
-            return
-        intentos = 0
-        # Un turno más para que Qt pinte el lienzo tras recibir la señal.
-        pasos.pop(0)
-        def capturar():
-            destino = DESTINO / archivo
-            if not ventana.grab().save(str(destino), "PNG"):
-                raise RuntimeError(f"No se pudo guardar {destino}.")
-            print(destino.name, destino.stat().st_size, "bytes")
-            QTimer.singleShot(150, siguiente)
-        QTimer.singleShot(220, capturar)
-
-    QTimer.singleShot(200, siguiente)
-    QTimer.singleShot(30_000, app.quit)  # evita quedar bloqueado en un plugin Qt defectuoso
-    codigo = app.exec()
-    if pasos:
-        raise TimeoutError(f"No se pudieron obtener {len(pasos)} capturas.")
-    return codigo
+    dpg.create_context()
+    try:
+        ventana = VentanaPrincipal(Preferencias(valores={"interfaz/tema": "claro"}))
+        dpg.create_viewport(title="AmPu 3.0", width=1440, height=900,
+                            min_width=900, min_height=600)
+        dpg.setup_dearpygui()
+        dpg.show_viewport()
+        dpg.set_primary_window(ventana.window, True)
+        pasos = [("distribuciones", "01_distribuciones_claro.png", "claro"),
+                 ("muestreo", "02_muestreo_claro.png", "claro"),
+                 ("inferencia", "03_inferencia_claro.png", "claro"),
+                 ("distribuciones", "04_distribuciones_oscuro.png", "oscuro")]
+        for clave, archivo, tema in pasos:
+            ventana.aplicar_tema(tema)
+            ventana.cambiar(clave)
+            vencimiento = time.monotonic() + 30
+            while (ventana.vista._ocupado or ventana.vista.ultimo is None) and time.monotonic() < vencimiento:
+                ventana.procesar()
+                dpg.render_dearpygui_frame()
+            if ventana.vista.ultimo is None:
+                raise TimeoutError(f"No terminó el cálculo para {clave}")
+            for _ in range(4):
+                ventana.procesar()
+                dpg.render_dearpygui_frame()
+            ruta = DESTINO / archivo
+            dpg.output_frame_buffer(file=str(ruta))
+            if not ruta.is_file() or not ruta.stat().st_size:
+                raise RuntimeError(f"No se pudo capturar {ruta}")
+            print(ruta.name, ruta.stat().st_size, "bytes")
+        return 0
+    finally:
+        if "ventana" in locals():
+            ventana.cerrar()
+        dpg.destroy_context()
 
 
 if __name__ == "__main__":

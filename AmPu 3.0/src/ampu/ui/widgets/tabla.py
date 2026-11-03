@@ -1,226 +1,234 @@
-"""Tabla ordenable, copiable y editable con deshacer/rehacer por hoja."""
+"""Tabla editable Dear PyGui con paginación, portapapeles TSV e historial."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeySequence, QUndoCommand, QUndoStack
-from PySide6.QtWidgets import QApplication, QAbstractItemView, QTableWidget, QTableWidgetItem
+import dearpygui.dearpygui as dpg
+
+from ampu.ui.entradas import texto_numero
 
 
-class Celda(QTableWidgetItem):
-    """Ordena números por magnitud y texto por orden natural vigente."""
+class TablaDatos:
+    """Mantiene el DataFrame completo y crea widgets solo para la página visible.
 
-    def __lt__(self, otro):
-        a, b = TablaDatos._valor(self), TablaDatos._valor(otro)
-        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-            return a < b
-        return self.text().casefold() < otro.text().casefold()
+    Las celdas editadas son anotaciones: nunca se devuelven al motor estadístico.
+    Cada hoja tiene historiales independientes de hasta veinte operaciones.
+    """
 
-
-class _CambioTabla(QUndoCommand):
-    """Instantánea acotada: conserva también pegados y precisión de los datos."""
-
-    def __init__(self, tabla: "TablaDatos", anterior: pd.DataFrame, siguiente: pd.DataFrame, nombre: str):
-        super().__init__(nombre)
-        self.tabla = tabla
-        self.anterior = anterior.copy(deep=True)
-        self.siguiente = siguiente.copy(deep=True)
-        self.inicial = True
-
-    def undo(self):
-        self.tabla._restablecer(self.anterior)
-
-    def redo(self):
-        if self.inicial:  # QUndoStack llama redo al agregar; la UI ya muestra el cambio.
-            self.inicial = False
-        else:
-            self.tabla._restablecer(self.siguiente)
-
-
-class TablaDatos(QTableWidget):
-    """QTableWidget con portapapeles TSV y historial por hoja de hasta 20 cambios."""
-
-    editado = Signal()
-    modificado = Signal()  # Solo operaciones del usuario, no repintado de resultados.
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAccessibleName("Tabla de resultados editable y ordenable")
-        self.setAccessibleDescription("Doble clic para editar; Ctrl+C, Ctrl+V, Ctrl+Z y Ctrl+Shift+Z. "
-                                      "Las ediciones no recalculan estadísticas.")
-        self.setAlternatingRowColors(True)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)
-        self.setSortingEnabled(True)
-        self.verticalHeader().setVisible(False)
-        self.setWordWrap(False)
-        self._pintando = False
+    def __init__(self, parent: int | str | None = None, *,
+                 modificado: Callable[[], None] | None = None,
+                 filas_por_pagina: int = 40):
+        self._datos = pd.DataFrame()
         self._clave = ""
-        self._historiales: dict[str, QUndoStack] = {}
-        self._anterior = pd.DataFrame()
-        self.itemChanged.connect(self._registrar_cambio)
-        self.model().layoutChanged.connect(self._orden_cambiado)
+        self._historiales: dict[str, tuple[list[pd.DataFrame], list[pd.DataFrame]]] = {}
+        self._pagina = 0
+        self.filas_por_pagina = max(5, min(200, filas_por_pagina))
+        self._pintando = False
+        self.modificado = modificado
+        self.editado: Callable[[], None] | None = None
+        self.tag = self._pagina_tag = self._contenedor = self._tabla_tag = None
+        if parent is not None:
+            self.montar(parent)
 
-    def _historial(self) -> QUndoStack:
-        if self._clave not in self._historiales:
-            pila = QUndoStack(self)
-            pila.setUndoLimit(20)
-            self._historiales[self._clave] = pila
-        return self._historiales[self._clave]
+    def montar(self, parent: int | str) -> None:
+        with dpg.group(parent=parent) as self.tag:
+            with dpg.group(horizontal=True):
+                dpg.add_button(label="Deshacer", callback=lambda: self.undo(), small=True)
+                dpg.add_button(label="Rehacer", callback=lambda: self.redo(), small=True)
+                dpg.add_button(label="Copiar página", callback=lambda: self.copiar(), small=True)
+                dpg.add_button(label="Pegar TSV", callback=lambda: self.pegar(self._inicio_pagina, 0), small=True)
+                dpg.add_button(label="Anterior", callback=lambda: self.cambiar_pagina(-1), small=True)
+                self._pagina_tag = dpg.add_text("0 filas")
+                dpg.add_button(label="Siguiente", callback=lambda: self.cambiar_pagina(1), small=True)
+            self._contenedor = dpg.add_child_window(height=210, border=False,
+                                                    horizontal_scrollbar=True)
+        self._pintar()
 
-    def reiniciar_historial(self):
-        """Un recálculo crea resultados nuevos; evita deshacer sobre otro modelo."""
-        for pila in self._historiales.values():
-            pila.clear()
+    @property
+    def _inicio_pagina(self) -> int:
+        return self._pagina * self.filas_por_pagina
 
-    def mostrar(self, tabla: pd.DataFrame, identificador: str | None = None):
-        """Puebla una hoja, conservando su propia pila de edición al alternar."""
+    @property
+    def _total_paginas(self) -> int:
+        return max(1, (len(self._datos) + self.filas_por_pagina - 1) // self.filas_por_pagina)
+
+    def reiniciar_historial(self) -> None:
+        self._historiales.clear()
+
+    def mostrar(self, tabla: pd.DataFrame, identificador: str | None = None) -> None:
         if identificador is None:
             self.reiniciar_historial()
             self._clave = ""
         else:
             self._clave = identificador
-        self._restablecer(tabla)
+        self._datos = tabla.copy(deep=True).reset_index(drop=True)
+        self._pagina = min(self._pagina, self._total_paginas - 1)
+        self._pintar()
+        if self.editado is not None:
+            self.editado()
 
-    def _restablecer(self, tabla: pd.DataFrame):
+    def _restablecer(self, tabla: pd.DataFrame) -> None:
+        self._datos = tabla.copy(deep=True).reset_index(drop=True)
+        self._pagina = min(self._pagina, self._total_paginas - 1)
+        self._pintar()
+
+    def _pintar(self) -> None:
+        if self._contenedor is None:
+            return
         self._pintando = True
         try:
-            self.setSortingEnabled(False)
-            self.clear()
-            self.setRowCount(len(tabla))
-            self.setColumnCount(len(tabla.columns))
-            self.setHorizontalHeaderLabels(list(map(str, tabla.columns)))
-            for row, valores in enumerate(tabla.itertuples(index=False, name=None)):
-                for col, valor in enumerate(valores):
-                    if isinstance(valor, (int, np.integer)) and not isinstance(valor, (bool, np.bool_)):
-                        numero, texto = int(valor), str(int(valor))
-                    elif isinstance(valor, (float, np.floating)):
-                        numero = float(valor)
-                        texto = "—" if np.isnan(numero) else ("∞" if numero == float("inf") else
-                                    "−∞" if numero == float("-inf") else f"{numero:.8g}")
-                    elif valor is None:
-                        texto, numero = "—", None
-                    else:
-                        texto, numero = str(valor), None
-                    item = Celda(texto)
-                    if numero is not None and not (isinstance(numero, float) and np.isnan(numero)):
-                        item.setData(Qt.UserRole, numero)
-                        item.setData(Qt.UserRole + 1, texto)
-                        item.setToolTip(str(valor))
-                    self.setItem(row, col, item)
-            self.setSortingEnabled(True)
-            self.resizeColumnsToContents()
-            for col in range(self.columnCount()):
-                self.setColumnWidth(col, max(88, min(self.columnWidth(col) + 14, 220)))
-            self._anterior = self.datos()
+            dpg.delete_item(self._contenedor, children_only=True, slot=1)
+            total = len(self._datos)
+            inicio = self._inicio_pagina
+            fin = min(total, inicio + self.filas_por_pagina)
+            dpg.set_value(self._pagina_tag,
+                          f"{total} filas · página {self._pagina + 1}/{self._total_paginas}"
+                          if total else "0 filas")
+            if not len(self._datos.columns):
+                dpg.add_text("La tabla aparecerá después del cálculo.", parent=self._contenedor)
+                return
+            with dpg.table(parent=self._contenedor, header_row=True, resizable=True,
+                           row_background=True, borders_innerH=True, borders_outerH=True,
+                           borders_innerV=True, borders_outerV=True, scrollX=True,
+                           policy=dpg.mvTable_SizingFixedFit) as self._tabla_tag:
+                for columna in self._datos.columns:
+                    dpg.add_table_column(label=str(columna), init_width_or_weight=125,
+                                         width_fixed=True)
+                for fila in range(inicio, fin):
+                    with dpg.table_row():
+                        for columna in range(len(self._datos.columns)):
+                            contenido = self._datos.iat[fila, columna]
+                            dpg.add_input_text(default_value=texto_numero(contenido), width=118,
+                                               callback=self._celda_cambiada,
+                                               user_data=(fila, columna))
         finally:
             self._pintando = False
-        self.editado.emit()
 
-    def _orden_cambiado(self, *args):
+    def _celda_cambiada(self, _sender, app_data, user_data) -> None:
         if not self._pintando:
-            self._anterior = self.datos()
-
-    def _registrar_cambio(self, item: QTableWidgetItem):
-        if self._pintando:
-            return
-        if item.data(Qt.UserRole + 1) is not None and item.text() != item.data(Qt.UserRole + 1):
-            self._pintando = True
-            try:
-                item.setToolTip(item.text())
-            finally:
-                self._pintando = False
-        nuevo = self.datos()
-        self._apilar(self._anterior, nuevo, "Editar celda")
-
-    def _apilar(self, antes: pd.DataFrame, despues: pd.DataFrame, nombre: str):
-        if not antes.equals(despues):
-            self._historial().push(_CambioTabla(self, antes, despues, nombre))
-            self._anterior = despues
-            self.editado.emit()
-            self.modificado.emit()
-
-    def undo(self):
-        pila = self._historial()
-        if pila.canUndo():
-            pila.undo()
-            self.modificado.emit()
-
-    def redo(self):
-        pila = self._historial()
-        if pila.canRedo():
-            pila.redo()
-            self.modificado.emit()
-
-    def puede_deshacer(self) -> bool:
-        return self._historial().canUndo()
-
-    def puede_rehacer(self) -> bool:
-        return self._historial().canRedo()
-
-    def datos(self) -> pd.DataFrame:
-        """Lee el orden y los valores exactos, no solo su texto abreviado."""
-        return pd.DataFrame([
-            [self._valor(self.item(fila, col)) for col in range(self.columnCount())]
-            for fila in range(self.rowCount())
-        ], columns=[self.horizontalHeaderItem(col).text() for col in range(self.columnCount())])
+            self.editar_celda(user_data[0], user_data[1], app_data)
 
     @staticmethod
-    def _valor(item: QTableWidgetItem | None) -> object:
-        if item is None:
-            return None
-        if item.data(Qt.UserRole + 1) == item.text() and item.data(Qt.UserRole) is not None:
-            return item.data(Qt.UserRole)
-        if item.text() == "—":
+    def _convertir(texto: str, anterior: object) -> object:
+        if texto.strip() in ("", "—"):
             return None
         try:
-            return float(item.text())
+            numero = float(texto)
+            if isinstance(anterior, (int, np.integer)) and not isinstance(anterior, (bool, np.bool_)) and numero.is_integer():
+                return int(numero)
+            return numero
         except ValueError:
-            return item.text()
+            return texto
 
-    def copiar(self):
-        indices = self.selectedIndexes()
-        if indices:
-            filas = sorted({i.row() for i in indices})
-            columnas = sorted({i.column() for i in indices})
-            texto = "\n".join("\t".join(self.item(r, c).text() if self.item(r, c) else "" for c in columnas)
-                                for r in filas)
-            QApplication.clipboard().setText(texto)
+    @staticmethod
+    def _asignar(tabla: pd.DataFrame, fila: int, columna: int, contenido: object) -> None:
+        """pandas 3 no promueve automáticamente una columna numérica a texto."""
+        try:
+            tabla.iat[fila, columna] = contenido
+        except (TypeError, ValueError):
+            nombre = tabla.columns[columna]
+            tabla[nombre] = tabla[nombre].astype(object)
+            tabla.iat[fila, columna] = contenido
 
-    def pegar(self):
-        """Importar el bloque TSV cuenta como una única edición reversible."""
-        inicio = self.currentIndex()
-        texto = QApplication.clipboard().text()
-        if inicio.isValid() and texto:
-            filas_pegadas = [linea.split("\t") for linea in texto.rstrip("\n").splitlines()]
-            if not filas_pegadas:
-                return
-            anterior = self.datos()
-            self._pintando = True
-            try:
-                self.setSortingEnabled(False)
-                self.setRowCount(max(self.rowCount(), inicio.row() + len(filas_pegadas)))
-                for dr, fila in enumerate(filas_pegadas):
-                    for dc, celda in enumerate(fila):
-                        if inicio.column() + dc < self.columnCount():
-                            self.setItem(inicio.row() + dr, inicio.column() + dc, Celda(celda))
-                self.setSortingEnabled(True)
-            finally:
-                self._pintando = False
-            self._apilar(anterior, self.datos(), "Pegar celdas")
-
-    def keyPressEvent(self, event):
-        """Usa las teclas estándar de cada sistema (Cmd en macOS)."""
-        if event.matches(QKeySequence.Undo):
-            self.undo()
-        elif event.matches(QKeySequence.Redo):
-            self.redo()
-        elif event.matches(QKeySequence.Copy):
-            self.copiar()
-        elif event.matches(QKeySequence.Paste):
-            self.pegar()
-        else:
-            super().keyPressEvent(event)
+    def editar_celda(self, fila: int, columna: int, contenido: object) -> None:
+        """Edita una celda por coordenadas absolutas; útil también para pruebas."""
+        if not (0 <= fila < len(self._datos) and 0 <= columna < len(self._datos.columns)):
             return
-        event.accept()
+        anterior = self._datos.copy(deep=True)
+        viejo = self._datos.iat[fila, columna]
+        self._asignar(self._datos, fila, columna, self._convertir(str(contenido), viejo))
+        self._apilar(anterior, self._datos)
+
+    def _pila(self) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
+        if self._clave not in self._historiales:
+            self._historiales[self._clave] = ([], [])
+        return self._historiales[self._clave]
+
+    def _apilar(self, antes: pd.DataFrame, despues: pd.DataFrame) -> None:
+        if antes.equals(despues):
+            self._pintar()
+            return
+        deshacer, rehacer = self._pila()
+        deshacer.append(antes.copy(deep=True))
+        del deshacer[:-20]
+        rehacer.clear()
+        self._pintar()
+        if self.editado is not None:
+            self.editado()
+        self._notificar()
+
+    def _notificar(self) -> None:
+        if self.modificado is not None:
+            self.modificado()
+
+    def undo(self) -> None:
+        deshacer, rehacer = self._pila()
+        if deshacer:
+            rehacer.append(self._datos.copy(deep=True))
+            self._restablecer(deshacer.pop())
+            self._notificar()
+
+    def redo(self) -> None:
+        deshacer, rehacer = self._pila()
+        if rehacer:
+            deshacer.append(self._datos.copy(deep=True))
+            self._restablecer(rehacer.pop())
+            self._notificar()
+
+    def puede_deshacer(self) -> bool:
+        return bool(self._pila()[0])
+
+    def puede_rehacer(self) -> bool:
+        return bool(self._pila()[1])
+
+    def cambiar_pagina(self, delta: int) -> None:
+        pagina = max(0, min(self._total_paginas - 1, self._pagina + delta))
+        if pagina != self._pagina:
+            self._pagina = pagina
+            self._pintar()
+
+    def ordenar(self, columna: str, ascendente: bool = True) -> None:
+        if columna in self._datos.columns:
+            self._datos = self._datos.sort_values(columna, ascending=ascendente,
+                                                  kind="stable").reset_index(drop=True)
+            self._pintar()
+            self._notificar()
+
+    def datos(self) -> pd.DataFrame:
+        return self._datos.copy(deep=True)
+
+    def rowCount(self) -> int:
+        return len(self._datos)
+
+    def columnCount(self) -> int:
+        return len(self._datos.columns)
+
+    def copiar(self) -> str:
+        inicio, fin = self._inicio_pagina, min(len(self._datos), self._inicio_pagina + self.filas_por_pagina)
+        contenido = self._datos.iloc[inicio:fin].to_csv(sep="\t", index=False, header=False)
+        dpg.set_clipboard_text(contenido)
+        return contenido
+
+    def pegar(self, fila: int = 0, columna: int = 0, contenido: str | None = None) -> None:
+        """Pega un bloque TSV como una sola operación reversible."""
+        contenido = dpg.get_clipboard_text() if contenido is None else contenido
+        if not contenido or not len(self._datos.columns):
+            return
+        filas = [linea.split("\t") for linea in contenido.rstrip("\n").splitlines()]
+        anterior = self._datos.copy(deep=True)
+        necesarias = fila + len(filas)
+        if necesarias > len(self._datos):
+            extension = pd.DataFrame([[None] * len(self._datos.columns)
+                                      for _ in range(necesarias - len(self._datos))],
+                                     columns=self._datos.columns)
+            self._datos = pd.concat([self._datos, extension], ignore_index=True)
+        for df, valores in enumerate(filas):
+            for dc, celda in enumerate(valores):
+                if 0 <= fila + df and columna + dc < len(self._datos.columns):
+                    viejo = self._datos.iat[fila + df, columna + dc]
+                    self._asignar(self._datos, fila + df, columna + dc,
+                                  self._convertir(celda, viejo))
+        self._apilar(anterior, self._datos)

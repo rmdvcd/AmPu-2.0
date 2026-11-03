@@ -17,7 +17,7 @@ pero deja evidencia medible de todo lo automatizable.
 | Sistema | Windows 10/11 (también funciona en PowerShell de macOS/Linux) |
 | PowerShell | 5.1 (incluido en Windows) o 7+ (`pwsh`). Ambos soportados |
 | Python | **3.12 o posterior** en el `PATH`, o se indica con `-Python` |
-| Escritorio | Necesario solo para las pruebas **visuales nativas** y `--self-test` (QtWebEngine) |
+| Escritorio | Necesario solo para pruebas **visuales nativas** y capturas; `--self-test` funciona sin viewport |
 | Red | Solo para el primer `pip install`; la app y las pruebas funcionan sin conexión |
 
 Comprueba el intérprete antes de empezar:
@@ -65,9 +65,9 @@ verificacion\salidas\<fecha-hora>\
 
 | Perfil | Para qué sirve | Duración aprox. | Incluye |
 |---|---|---|---|
-| `rapido` | Humo tras un cambio pequeño | 5–10 min | entorno, recursos, pytest, SciPy, cálculo abreviado, UI offscreen |
+| `rapido` | Humo tras un cambio pequeño | 5–10 min | entorno, recursos, pytest, SciPy, cálculo abreviado, UI Dear PyGui sin viewport |
 | `completo` | **Recomendado antes de entregar** | 20–40 min | todo + cobertura + rendimiento + UI nativa + `--self-test` |
-| `visual` | Revisar diseño, temas, contraste y accesibilidad | 5–10 min | capturas en tema claro y oscuro, zoom 150/200 %, contraste WCAG, nombres accesibles, KaTeX |
+| `visual` | Revisar diseño, temas, contraste y accesibilidad | 5–10 min | capturas en tema claro y oscuro, zoom 150/200 %, contraste WCAG de paletas y teoría local |
 | `rendimiento` | Comparar dos equipos o dos versiones | 15–30 min | benchmarks a escala completa (10 repeticiones) + tiempos de UI |
 | `calculo` | Auditar el motor numérico | 10–20 min | 26 distribuciones, 7 diseños, 16 pruebas, simulación, exportadores, cobertura |
 
@@ -83,7 +83,7 @@ powershell -ExecutionPolicy Bypass -File ".\verificacion\EjecutarVerificacion.ps
 # Solo rendimiento, 15 repeticiones y carpeta de salida propia
 powershell -ExecutionPolicy Bypass -File ".\verificacion\EjecutarVerificacion.ps1" -Perfil rendimiento -Repeticiones 15 -Salida "D:\reportes\ampu-2026-10-30"
 
-# Forzar la interfaz offscreen (servidor sin pantalla)
+# Forzar el contexto sin viewport (servidor sin pantalla)
 powershell -ExecutionPolicy Bypass -File ".\verificacion\EjecutarVerificacion.ps1" -Perfil calculo -Interfaz offscreen
 
 # Incluir la compilación del ejecutable con su autoprueba gráfica
@@ -174,38 +174,33 @@ adaptador**.
 ### 4.4 Interfaz: pruebas visuales, contraste y accesibilidad
 
 ```powershell
-# Prueba visual real (requiere escritorio). Capturas en capturas\ y exportaciones reales.
+# Prueba visual real (requiere escritorio). Capturas y exportaciones reales.
 python verificacion\pruebas\benchmark_ui.py --plataforma native --salida "verificacion\salidas\datos\ui_nativo.json" --capturas "verificacion\salidas\capturas" --exportaciones "verificacion\salidas\exportaciones\nativo" --zoom 1.5 2.0
 
-# Servidor sin pantalla (raster offscreen, sin WebEngine)
-$env:QT_QPA_PLATFORM="offscreen"; $env:QTWEBENGINE_DISABLE_SANDBOX="1"
-python verificacion\pruebas\benchmark_ui.py --plataforma offscreen --sin-teoria --salida "verificacion\salidas\datos\ui_offscreen.json"
+# Servidor sin pantalla: contexto Dear PyGui real, pero sin viewport ni píxeles.
+$env:MPLBACKEND="Agg"
+python verificacion\pruebas\benchmark_ui.py --plataforma offscreen --salida "verificacion\salidas\datos\ui_offscreen.json"
 ```
 
 Qué mide u observa:
 
-1. **Arranque**: tiempo de `QApplication` + plugins y de `VentanaPrincipal` con sus 6 vistas
-   y gráficos.
-2. **Cambio de vista + primer resultado** de cada módulo.
-3. **Capturas reales** de 6 vistas × 2 temas (claro y oscuro) más la ventana
-   compacta 900×600 y los zooms 150 % y 200 %.
-4. **Huella perceptual** `aHash` de 64 bits por captura, para detectar cambios de estilo
-   entre ejecuciones (y comparar con una línea base).
-5. **Contraste WCAG medido sobre píxeles renderizados** de etiquetas y botones visibles.
-6. **Nombres accesibles** de los controles interactivos y política de foco.
-7. **Menús y atajos** (`Ctrl+1…7`, `Ctrl+L`, `Ctrl+F6`, `Ctrl+0`, `F1`, `F2`, `Ctrl+,`).
-8. **WebEngine**: KaTeX, figuras locales, CSS y tema oscuro dentro de Chromium real.
-9. **Exportación desde cada vista** a XLSX/CSV/PNG/PDF y **sesión completa** guardada,
-   releída y restaurada (recalcula sola).
-10. **Memoria** del proceso gráfico.
+1. **Arranque** de `VentanaPrincipal` con sus siete vistas y texturas.
+2. **Primer cálculo** de los seis módulos y existencia de resultados/tablas reales.
+3. **Capturas reales del viewport** para cada vista solicitada en claro y oscuro (solo `native`).
+4. **Huella perceptual** `aHash` de 64 bits por captura y comparación opcional con una línea base.
+5. **Contraste WCAG de las paletas** de texto/fondo. No se presenta como una medición de píxeles.
+6. **Escala de texto** adicional; los recortes y el foco se revisan visualmente en el SO.
+7. **Teoría local** con contenido seleccionable, código LaTeX y figuras como texturas.
+8. **Exportaciones** XLSX/CSV/PNG/PDF y **sesión completa** guardada, releída y recalculada.
+9. **Memoria** del proceso y duración de cada operación.
+
+El modo `offscreen` registra las capturas como omitidas: construir widgets no equivale a
+renderizarlos. Tampoco certifica lector de pantalla, orden de foco, DPI ni portabilidad.
 
 Línea base visual (para comparar tras un rediseño):
 
 ```powershell
-# 1) guardar la referencia en un equipo de confianza
-python verificacion\pruebas\benchmark_ui.py --plataforma native --salida "verificacion\salidas\datos\ui_nativo.json" --linea-base "verificacion\salidas\datos\linea_base_ui.json" --guardar-linea-base
-
-# 2) en ejecuciones posteriores, comparar (falla si la distancia > 8/64 bits)
+python verificacion\pruebas\benchmark_ui.py --plataforma native --salida "verificacion\salidas\datos\ui_nativo.json" --guardar-linea-base
 python verificacion\pruebas\benchmark_ui.py --plataforma native --linea-base "verificacion\salidas\datos\linea_base_ui.json"
 ```
 
@@ -214,11 +209,11 @@ python verificacion\pruebas\benchmark_ui.py --plataforma native --linea-base "ve
 ```powershell
 python -m ampu --verify-resources
 python -m ampu --self-test
-python -m ampu --self-test --capture-theory "verificacion\salidas\capturas\teoria_selftest.png"
 ```
 
-`--self-test` **no omite WebEngine**: falla si Chromium no renderiza KaTeX, la figura local,
-el CSS o el tema oscuro. Es la evidencia más fuerte de que la teoría funciona en ese equipo.
+`--self-test` no abre viewport ni omite módulos: falla si los seis análisis, la teoría local,
+el asistente o los temas Dear PyGui no funcionan. La captura visual se realiza por separado
+con `scripts/capturar_ui.py` en un escritorio.
 
 ### 4.6 Consolidar un reporte a mano
 
@@ -240,7 +235,7 @@ python verificacion\pruebas\consolidar_reporte.py --carpeta "verificacion\salida
 6. Cotejo con SciPy y los mayores errores absolutos.
 7. Rendimiento: operaciones más costosas y sobrecoste frente a SciPy.
 8. Interfaz: tiempos, contraste por tema, accesibilidad, capturas y huellas.
-9. Autoprueba WebEngine.
+9. Autoprueba Dear PyGui.
 10. **Hallazgos priorizados** (severidad, evidencia, acción sugerida).
 11. Lo que esta batería **no** puede certificar.
 12. Instrucciones de entrega.
@@ -281,8 +276,8 @@ rendimiento (media).
 | `... no se puede cargar porque la ejecución de scripts está deshabilitada` | Usa `powershell -ExecutionPolicy Bypass -File ...` o `Unblock-File .\verificacion\*.ps1` |
 | `No se encontró Python` | Instala Python 3.12+ o pasa `-Python "C:\Python312\python.exe"` |
 | `No module named pytest` / `pytest-cov` | `-Instalar` o `pip install -r requirements.txt` (incluye `.[dev]`) |
-| `Could not find the Qt platform plugin "windows"` | Ejecuta desde una sesión de escritorio; no uses sesiones SSH sin escritorio |
-| `WebEngine no inició; comprueba NSS, QtWebEngineProcess y X11` | Falta el runtime gráfico (o MSVC redistributable en Windows). Ejecuta sin `-Empaquetar` y revisa `logs\self_test.log` |
+| `Dear PyGui no puede crear el viewport` | Ejecuta desde una sesión de escritorio con X11/OpenGL; no uses una sesión SSH sin reenvío gráfico |
+| `Dear PyGui no inició; comprueba X11/OpenGL y el entorno de escritorio` | Falta el runtime gráfico de Dear PyGui (o MSVC redistributable en Windows). Ejecuta sin `-Empaquetar` y revisa `logs\self_test.log` |
 | Las pruebas visuales nativas fallan y las offscreen pasan | Es lo esperado en un servidor: el reporte marcará la verificación visual como pendiente |
 | Acentos raros en la consola | Los `.ps1` se guardan en UTF-8 con BOM; en PS 5.1 ejecuta `chcp 65001` antes |
 | El ZIP no aparece | `-SinZip` o falta espacio; el resto del paquete sigue disponible |

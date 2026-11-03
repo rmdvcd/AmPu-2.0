@@ -2,7 +2,7 @@
 
 Uso:
     python verificacion/pruebas/recolectar_entorno.py --salida datos/entorno.json
-    python ... --gui          # además abre QGuiApplication para leer pantallas/DPI/tema
+    python ... --gui          # además comprueba un contexto Dear PyGui real
 
 No modifica nada del proyecto ni la configuración del usuario.
 """
@@ -34,7 +34,7 @@ def _hash_arbol(raiz: Path, limite: int = 4000) -> dict:
     contados = 0
     bytes_total = 0
     for ruta in sorted((raiz / "src").rglob("*")):
-        if ruta.is_file() and ruta.suffix in {".py", ".qss", ".md", ".js", ".css", ".html"}:
+        if ruta.is_file() and ruta.suffix in {".py", ".md", ".js", ".css", ".html"}:
             datos = ruta.read_bytes()
             digest.update(ruta.relative_to(raiz).as_posix().encode("utf-8"))
             digest.update(datos)
@@ -47,32 +47,29 @@ def _hash_arbol(raiz: Path, limite: int = 4000) -> dict:
 
 
 def _pantallas() -> dict:
-    """Lee pantallas reales; devuelve el motivo si Qt no puede inicializarse."""
+    """Comprueba Dear PyGui sin afirmar haber medido pantalla o DPI."""
     try:
-        from PySide6.QtGui import QGuiApplication
+        import dearpygui.dearpygui as dpg
 
-        app = QGuiApplication.instance() or QGuiApplication(sys.argv[:1])
-        pantallas = []
-        for pantalla in app.screens():
-            geometria = pantalla.geometry()
-            pantallas.append({
-                "nombre": pantalla.name(),
-                "tamano_px": [geometria.width(), geometria.height()],
-                "dpi_logico": round(pantalla.logicalDotsPerInch(), 1),
-                "dpi_fisico": round(pantalla.physicalDotsPerInch(), 1),
-                "escala": round(pantalla.devicePixelRatio(), 2),
-                "frecuencia_hz": round(pantalla.refreshRate(), 1),
-            })
-        return {"plataforma_qt": app.platformName(), "tema_so": str(app.styleHints().colorScheme()),
-                "pantallas": pantallas, "fuente_sistema": app.font().toString()}
+        dpg.create_context()
+        try:
+            return {
+                "plataforma_ui": "Dear PyGui",
+                "version_dpg": dpg.get_dearpygui_version(),
+                "pantallas": [],
+                "fuente_sistema": "no consultada: Dear PyGui no expone una API portable",
+                "nota": "Contexto real sin viewport; la medición de DPI requiere revisión nativa.",
+            }
+        finally:
+            dpg.destroy_context()
     except Exception as exc:
-        return {"error": f"{type(exc).__name__}: {exc}"}
+        return {"plataforma_ui": "Dear PyGui", "error": f"{type(exc).__name__}: {exc}"}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Huella de entorno para el reporte de AmPu 3.0")
     parser.add_argument("--salida", type=Path, default=Path("datos/entorno.json"))
-    parser.add_argument("--gui", action="store_true", help="Lee pantallas/DPI (requiere escritorio)")
+    parser.add_argument("--gui", action="store_true", help="Comprueba el contexto Dear PyGui")
     args = parser.parse_args()
 
     raiz = _comun.preparar_import()

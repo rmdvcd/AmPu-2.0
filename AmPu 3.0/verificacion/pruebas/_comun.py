@@ -1,7 +1,7 @@
 """Utilidades compartidas por los scripts de verificación de AmPu 3.0.
 
 Este módulo no forma parte del producto: solo lo usan los scripts de
-``verificacion/pruebas``. No importa Qt ni modifica la aplicación.
+``verificacion/pruebas``. No crea ventanas ni modifica la aplicación.
 
 Convenciones de salida (todas las herramientas escriben el mismo sobre):
     {
@@ -155,13 +155,12 @@ def entorno() -> dict:
         "ejecutable_python": sys.executable,
         "cwd": os.getcwd(),
         "entorno_virtual": os.environ.get("VIRTUAL_ENV", ""),
-        "variables_qt": {k: os.environ.get(k, "") for k in
-                         ("QT_QPA_PLATFORM", "QTWEBENGINE_DISABLE_SANDBOX", "QT_SCALE_FACTOR",
-                          "QT_ENABLE_HIGHDPI_SCALING", "QT_SCREEN_SCALE_FACTORS")},
+        "variables_graficas": {k: os.environ.get(k, "") for k in
+                              ("DISPLAY", "WAYLAND_DISPLAY", "MPLBACKEND")},
         "memoria_total_mb": _memoria_total_mb(),
         "librerias": {},
     }
-    for modulo in ("numpy", "scipy", "pandas", "matplotlib", "PySide6", "openpyxl", "reportlab", "markdown"):
+    for modulo in ("numpy", "scipy", "pandas", "matplotlib", "dearpygui", "openpyxl", "reportlab", "markdown"):
         try:
             import importlib
 
@@ -175,25 +174,7 @@ def entorno() -> dict:
         info["ampu"] = getattr(ampu, "__version__", "desconocida")
     except Exception as exc:
         info["ampu"] = f"no importable: {exc}"
-    try:  # información de la pantalla solo si ya existe una QApplication
-        from PySide6.QtGui import QGuiApplication
-
-        app = QGuiApplication.instance()
-        if app is not None:
-            pantallas = []
-            for pantalla in app.screens():
-                geometria = pantalla.geometry()
-                pantallas.append({"nombre": pantalla.name(),
-                                  "tamano_px": [geometria.width(), geometria.height()],
-                                  "dpi_logico": round(pantalla.logicalDotsPerInch(), 1),
-                                  "dpi_fisico": round(pantalla.physicalDotsPerInch(), 1),
-                                  "escala": round(pantalla.devicePixelRatio(), 2),
-                                  "frecuencia_hz": round(pantalla.refreshRate(), 1)})
-            info["pantallas"] = pantallas
-            info["plataforma_qt"] = app.platformName()
-            info["tema_so"] = str(app.styleHints().colorScheme())
-    except Exception:
-        pass
+    info["plataforma_ui"] = "Dear PyGui"
     return info
 
 

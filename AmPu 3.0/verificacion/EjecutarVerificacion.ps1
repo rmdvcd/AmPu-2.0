@@ -12,9 +12,9 @@
     .\verificacion\salidas\<fecha>\ y, si se pide -Instalar, en .\.venv.
 
 .PARAMETER Perfil
-    rapido       ~5-10 min: humo de cálculo, pytest sin cobertura y UI offscreen.
+    rapido       ~5-10 min: humo de cálculo, pytest sin cobertura y UI Dear PyGui sin viewport.
     completo     Todo lo anterior + cobertura, SciPy, UI nativa si hay escritorio.
-    visual       Capturas en temas claro/oscuro, zoom, contraste WCAG y WebEngine.
+    visual       Capturas en temas claro/oscuro, zoom y contraste WCAG de Dear PyGui.
     rendimiento  Benchmarks del núcleo a escala completa + tiempos de UI.
     calculo      Pruebas numéricas exhaustivas + cobertura + cotejo con SciPy.
 
@@ -177,10 +177,9 @@ $Base = @{
     PYTHONIOENCODING     = 'utf-8'
     PYTHONPATH           = (Join-Path $Raiz 'src')
     MPLBACKEND           = 'Agg'
-    QTWEBENGINE_DISABLE_SANDBOX = '1'
 }
-$Offscreen = @{ QT_QPA_PLATFORM = 'offscreen' }
-$Nativo = @{ QT_QPA_PLATFORM = $null }
+$Offscreen = @{ MPLBACKEND = 'Agg' }
+$Nativo = @{ MPLBACKEND = 'Agg' }
 
 function Invoke-Py {
     param(
@@ -218,9 +217,9 @@ Write-Host ("  pytest ..................... " + $(if ($hacePytest) { "sí" } els
 Write-Host ("  contraste con SciPy ........ " + $(if ($Perfil -ne 'visual') { "sí" } else { "no" }))
 Write-Host ("  pruebas de cálculo ......... " + $(if ($haceCalculo) { "sí" } else { "no" }))
 Write-Host ("  rendimiento del núcleo ..... " + $(if ($haceRendimiento) { "sí" } else { "no" }))
-Write-Host ("  interfaz offscreen ......... sí")
+Write-Host ("  contexto sin viewport ....... sí")
 Write-Host ("  interfaz nativa ............ " + $(if ($quiereNativo) { "sí" } else { "no" }))
-Write-Host ("  autoprueba QtWebEngine ..... " + $(if ($quiereNativo -and $Perfil -in @('completo', 'visual')) { "sí" } else { "no" }))
+Write-Host ("  autoprueba Dear PyGui ...... " + $(if ($quiereNativo -and $Perfil -in @('completo', 'visual')) { "sí" } else { "no" }))
 Write-Host ("  empaquetado PyInstaller .... " + $(if ($Empaquetar) { "sí" } else { "no" }))
 
 # --------------------------------------------------------------- 1. entorno
@@ -287,10 +286,10 @@ if ($haceRendimiento) {
 }
 
 # --------------------------------------------------------- 7. interfaz offscreen
-Write-Apartado "7. Interfaz en raster offscreen"
-Invoke-Py -Nombre 'UI offscreen: vistas, temas, contraste, exportaciones y sesión' `
+Write-Apartado "7. Interfaz Dear PyGui sin viewport"
+Invoke-Py -Nombre 'UI sin viewport: vistas, temas, contraste, exportaciones y sesión' `
     -Argumentos @((Join-Path $Pruebas 'benchmark_ui.py'),
-                  '--plataforma', 'offscreen', '--sin-teoria',
+                  '--plataforma', 'offscreen',
                   '--salida', (Join-Path $Datos 'ui_offscreen.json'),
                   '--capturas', (Join-Path $Capturas 'offscreen'),
                   '--exportaciones', (Join-Path $Exportaciones 'offscreen'),
@@ -310,16 +309,15 @@ if ($quiereNativo) {
     if (Test-Path -LiteralPath (Join-Path $Datos 'linea_base_ui.json')) {
         $argsUi += @('--linea-base', (Join-Path $Datos 'linea_base_ui.json'))
     }
-    Invoke-Py -Nombre 'UI nativa: capturas por tema/vista, contraste, accesibilidad y WebEngine' `
+    Invoke-Py -Nombre 'UI nativa: capturas Dear PyGui por tema y vista' `
         -Argumentos $argsUi -Variables $Nativo -TimeoutSegundos 2400 -Log 'ui_nativo.log' | Out-Null
 }
 
 # ------------------------------------------------------- 9. autoprueba estricta
 if ($quiereNativo -and $Perfil -in @('completo', 'visual')) {
-    Write-Apartado "9. Autoprueba estricta de QtWebEngine"
-    Invoke-Py -Nombre 'Autoprueba --self-test con captura de teoría' `
-        -Argumentos @('-m', 'ampu', '--self-test',
-                      '--capture-theory', (Join-Path $Capturas 'teoria_selftest.png')) `
+    Write-Apartado "9. Autoprueba estricta de Dear PyGui"
+    Invoke-Py -Nombre 'Autoprueba --self-test de módulos, teoría y asistente' `
+        -Argumentos @('-m', 'ampu', '--self-test') `
         -Variables $Nativo -TimeoutSegundos 900 -Log 'self_test.log' | Out-Null
 }
 

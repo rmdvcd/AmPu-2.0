@@ -8,8 +8,8 @@ AmPu 3.0 es una **implementación nueva en Python**. Ningún archivo de la versi
 |---|---|
 | Métodos de `Funciones.java` y tablas de Swing | `ampu.core.distribuciones.obtener(clave)` y panel **Distribuciones**; 26 modelos y parámetros validados por metadatos. |
 | Muestreo simple, infinito y estratificado | Panel **Muestreo**: sin/con reemplazo, sistemático, proporcional, Neyman, óptimo y conglomerados de una o dos etapas; semilla explícita. |
-| JFreeChart y exportación Excel | Matplotlib QtAgg, tablas editables y servicio común XLSX/CSV/PNG/PDF. |
-| Páginas HTML integradas | 57 lecciones Markdown+LaTeX, KaTeX y fuentes locales, 31 figuras, búsqueda, índice, claro/oscuro. |
+| JFreeChart y exportación Excel | Dear PyGui + Matplotlib Agg, tablas editables y servicio común XLSX/CSV/PNG/PDF. |
+| Páginas HTML integradas | 57 lecciones Markdown+LaTeX, 31 figuras locales, búsqueda y lector Dear PyGui con texto seleccionable. |
 | Accesos directos a programas de Windows | Calculadora científica integrada, sin rutas de Windows. |
 
 Además se incorporan descriptiva, Bayes, combinatoria, pruebas de hipótesis, intervalos, regresión, Monte Carlo, ajuste y QQ-plots. El formato de sesión es **JSON versionado**: se guarda con `Guardar sesión`, se recupera con `Abrir`, y se rechazan versiones incompatibles.
@@ -56,4 +56,4 @@ seleccion = ejecutar_diseno("finito", N=400, n=40, seed=42)
 print(seleccion.tablas["Selección"].head())
 ```
 
-El motor **no requiere Qt** para usar estas funciones; la UI descubre los modelos automáticamente desde `registro.py`. Más decisiones de alcance y restricciones se describen en [PLAN.md](PLAN.md).
+El motor **no requiere Dear PyGui** para usar estas funciones; la UI descubre los modelos automáticamente desde `registro.py`. Más decisiones de alcance y restricciones se describen en [PLAN.md](PLAN.md).

@@ -1,6 +1,6 @@
 # Auditoría UI/UX/IX de escritorio y del asistente matemático · AmPu 3.0
 
-**Fecha:** 28 de octubre de 2026. **Alcance:** exclusivamente `AmPu 3.0/`, PySide6/Qt 6 con motor NumPy/SciPy aislado de la UI, teoría Markdown + KaTeX local en QWebEngineView. **Destinos:** Windows, macOS y Linux; esta ejecución automatizada es Linux sin pila gráfica completa. Guías aplicadas: `desktop-ui-ux-ix.skill.md` y `math-desktop-assistant-ui-ux-ix.skill.md` facilitadas para esta revisión.
+> **Documento histórico (28 de octubre de 2026).** Describe la implementación PySide6/Qt anterior. La interfaz actual usa Dear PyGui desde el 3 de noviembre de 2026; referencias a QSS, QThread, QWebEngine y nombres de pruebas Qt no deben interpretarse como estado actual. Las puertas visuales pendientes se mantienen en el README y en PLAN.md.
 
 **Convención:** MUST = exigencia; SHOULD = mejora recomendable; MUST NOT = prohibición. Severidad Bloqueante/Alta/Media/Baja. `Verificado` significa prueba automatizada local; `Parcial` indica código implementado pero aceptación nativa incompleta; `Pendiente externo` requiere SO/hardware/tecnología asistiva no disponibles aquí. Las celdas «evidencia» remiten a código/pruebas, no a una validación visual no realizada. Las recomendaciones de hallazgos resueltos describen el cambio efectuado; las de pendientes son trabajo para la puerta de publicación, **no prestaciones afirmadas**.
 

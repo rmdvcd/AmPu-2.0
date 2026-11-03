@@ -312,8 +312,8 @@ def hallazgos(info: dict) -> list[dict]:
                                 ("Interfaz offscreen", info["ui_offscreen"])):
         if not documento:
             continue
-        # Si Qt no está disponible, ya se informa de la carencia una sola vez.
-        sin_qt = any(r.get("id") == "ui.disponible" and r.get("estado") == "OMITIDA"
+        # Si Dear PyGui no está disponible, se informa de la carencia una sola vez.
+        sin_ui = any(r.get("id") == "ui.disponible" and r.get("estado") == "OMITIDA"
                      for r in documento.get("resultados", []))
         tiempos, capturas, extras = recopilar_metricas_ui(documento)
         for metrica in tiempos:
@@ -321,7 +321,7 @@ def hallazgos(info: dict) -> list[dict]:
             limite = None
             if operacion.startswith("arranque: VentanaPrincipal"):
                 limite = UMBRALES["arranque_ventana_ms"]
-            elif operacion.startswith("vista ") and "primer resultado" in operacion:
+            elif operacion.startswith("cálculo inicial:"):
                 limite = UMBRALES["vista_primera_ms"]
             elif operacion.startswith("exportar"):
                 limite = UMBRALES["exportacion_ms"]
@@ -329,19 +329,19 @@ def hallazgos(info: dict) -> list[dict]:
                 agregar("Media", "Rendimiento UI",
                         f"{operacion} supera el umbral ({limite} ms)",
                         f"{metrica['mediana_ms']} ms en {etiqueta}",
-                        "Revisar el cálculo asociado y el coste de Matplotlib/WebEngine.")
+                        "Revisar el cálculo asociado y el coste de Matplotlib y de las texturas Dear PyGui.")
         for nombre, metrica in extras.get("contrastes", {}).items():
             if (metrica.get("min_ms") or 99) < UMBRALES["contraste_min"]:
                 agregar("Alta", "Accesibilidad visual",
                         f"Contraste por debajo de WCAG AA en {nombre}",
                         f"mínimo {metrica.get('min_ms')}:1 · {metrica.get('notas')}",
-                        "Ajustar los pares de color del QSS y volver a medir.")
+                        "Ajustar los pares de color de ui/temas.py y volver a medir.")
         a11y = extras.get("accesibilidad") or {}
         if a11y and (a11y.get("obtenido") or 0) < UMBRALES["accesibilidad_nombres"]:
             agregar("Media", "Accesibilidad",
                     f"Nombres accesibles {a11y.get('obtenido')} < {UMBRALES['accesibilidad_nombres']}",
                     acortar(a11y.get("notas"), 300),
-                    "Añadir setAccessibleName a los controles listados.")
+                    "Añadir etiquetas visibles y comprobar tecnologías de asistencia en cada SO.")
         for captura in capturas:
             distancia = captura.get("distancia_linea_base")
             if distancia is not None and distancia > UMBRALES["distancia_visual"]:
@@ -349,20 +349,20 @@ def hallazgos(info: dict) -> list[dict]:
                         f"Cambio visual en {captura['archivo']} (distancia {distancia}/64)",
                         "Puede ser intencional (rediseño) o una regresión de estilo.",
                         "Comparar la captura con la línea base y aprobar o revertir.")
-        if not capturas and not sin_qt:
+        if not capturas and not sin_ui and etiqueta == "Interfaz nativa":
             agregar("Media", etiqueta, "No se generaron capturas",
                     "Sin imágenes no hay evidencia visual.",
                     "Ejecutar con --plataforma native en un escritorio real.")
 
     if not info["ui_nativo"]:
         agregar("Media", "Interfaz", "No hay prueba visual en escritorio nativo",
-                "Solo existe la ejecución offscreen (sin Chromium ni foco real del SO).",
+                "Solo existe la ejecución sin viewport (sin píxeles, DPI ni foco real del SO).",
                 "Ejecutar el perfil «visual» en Windows/macOS/Linux con escritorio.")
     selftest = info["selftest"]
     if not selftest or not selftest.is_file():
-        agregar("Media", "WebEngine", "No se ejecutó la autoprueba --self-test",
-                "KaTeX, MathML, figura local y tema oscuro quedan sin verificar en Chromium real.",
-                "Ejecutar python -m ampu --self-test --capture-theory <ruta.png>.")
+        agregar("Media", "Dear PyGui", "No se ejecutó la autoprueba --self-test",
+                "Los seis módulos, la teoría local, el asistente y los temas quedan sin verificar.",
+                "Ejecutar python -m ampu --self-test.")
     return encontrados
 
 
@@ -408,7 +408,7 @@ def construir_reporte(info: dict, encontrados: list[dict]) -> str:
             f"{p.get('nombre')} {p.get('tamano_px')} {p.get('dpi_logico')} dpi ×{p.get('escala')}"
             for p in entorno.get("pantalla", {}).get("pantallas", [])) or "no leídas"],
         ["Fuente del sistema", entorno.get("pantalla", {}).get("fuente_sistema", "n/d")],
-        ["Plataforma Qt", entorno.get("pantalla", {}).get("plataforma_qt", "n/d")],
+        ["Plataforma UI", entorno.get("pantalla", {}).get("plataforma_ui", "Dear PyGui")],
     ]))
     a("")
 
@@ -594,11 +594,11 @@ def construir_reporte(info: dict, encontrados: list[dict]) -> str:
         opciones = documento.get("opciones", {})
         a(f"{resumen.get('pasan')}/{resumen.get('total')} comprobaciones pasan "
           f"({resumen.get('fallan')} fallan, {resumen.get('omitidas', 0)} omitidas) · "
-          f"plataforma Qt `{opciones.get('plataforma_qt', 'n/d')}` · "
+          f"plataforma UI `{opciones.get('plataforma_ui', 'Dear PyGui')}` · "
           f"tamaño base {opciones.get('tamano', 'n/d')} · temas `{opciones.get('temas', 'n/d')}`.")
         a("")
         if resumen.get("pasan", 0) == 0 and resumen.get("omitidas", 0) == resumen.get("total", 0):
-            a("**La interfaz no se pudo verificar en este equipo** (falta PySide6 o las "
+            a("**La interfaz no se pudo verificar en este equipo** (falta Dear PyGui o las "
               "bibliotecas gráficas nativas). Es una omisión declarada, no una aprobación: "
               "hay que repetir esta parte en un escritorio con pantalla.")
             a("")
@@ -647,7 +647,7 @@ def construir_reporte(info: dict, encontrados: list[dict]) -> str:
         a("")
 
     # --- selftest
-    a("## @@. Autoprueba estricta de QtWebEngine")
+    a("## @@. Autoprueba estricta de Dear PyGui")
     a("")
     if info["selftest"] and info["selftest"].is_file():
         contenido = info["selftest"].read_text(encoding="utf-8-sig", errors="replace").strip()

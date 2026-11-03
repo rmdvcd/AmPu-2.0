@@ -1,69 +1,68 @@
-"""Gráficos embebidos con QtAgg, zoom/pan y tooltip de coordenadas."""
+"""Gráficos Matplotlib ``Agg`` presentados como texturas Dear PyGui.
 
+El mismo ``Figure`` se reutiliza para PNG/PDF; no se carga ningún backend Qt.
+"""
+
+from __future__ import annotations
+
+import dearpygui.dearpygui as dpg
 import numpy as np
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QGraphicsOpacityEffect, QLabel, QVBoxLayout, QWidget
 
 from ampu.core.distribuciones.tabla import ResultadoDistribucion
 
 
-class Grafico(QWidget):
-    """Contenedor Matplotlib reutilizado para todas las vistas."""
+class Grafico:
+    """Lienzo exportable con adaptador opcional a la interfaz Dear PyGui."""
 
-    def __init__(self, parent=None):
-        """Construye una sola Figure y sus controles nativos de navegación."""
-        super().__init__(parent)
-        self.figura = Figure(figsize=(7, 3.6), dpi=110)
-        self.lienzo = FigureCanvasQTAgg(self.figura)
-        self.lienzo.setMinimumHeight(250)
-        self.barra = NavigationToolbar2QT(self.lienzo, self)
-        self.pie = QLabel("Arrastra para explorar · usa la lupa para ampliar")
-        self.pie.setObjectName("Muted")
-        self.pie.setWordWrap(True)
-        self.descripcion = QLabel("Sin resultados: el gráfico aparecerá después del cálculo.")
-        self.descripcion.setObjectName("Note")
-        self.descripcion.setWordWrap(True)
-        self.descripcion.setTextInteractionFlags(Qt.TextSelectableByKeyboard | Qt.TextSelectableByMouse)
-        self.lienzo.setAccessibleName("Gráfico interactivo; descripción y tabla disponibles debajo")
-        v = QVBoxLayout(self)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(3)
-        v.addWidget(self.barra)
-        v.addWidget(self.lienzo, 1)
-        v.addWidget(self.pie)
-        v.addWidget(self.descripcion)
+    ANCHO = 760
+    ALTO = 285
+
+    def __init__(self, parent: int | str | None = None):
+        self.figura = Figure(figsize=(self.ANCHO / 100, self.ALTO / 100), dpi=100)
+        self.lienzo = FigureCanvasAgg(self.figura)
         self.oscuro = False
         self._escala = 1.0
         self._ultimo: tuple | None = None
-        self._efecto: QGraphicsOpacityEffect | None = None
-        self._animacion: QPropertyAnimation | None = None
-        self.lienzo.mpl_connect("motion_notify_event", self._mover)
+        self._descripcion = "Sin resultados: el gráfico aparecerá después del cálculo."
+        self._contenedor = self._textura = self._imagen = None
+        self._pie_tag = self._descripcion_tag = None
+        if parent is not None:
+            self.montar(parent)
         self.vacio()
 
-    def _mover(self, evento):
-        """Muestra coordenadas sin bloquear ni repintar a cada movimiento."""
-        if evento.inaxes and evento.xdata is not None and evento.ydata is not None:
-            self.lienzo.setToolTip(f"x = {evento.xdata:.5g} · y = {evento.ydata:.5g}")
+    @property
+    def descripcion(self) -> str:
+        return self._descripcion
 
-    def tema(self, oscuro: bool):
-        """Redibuja la última serie al cambiar de tema."""
+    def montar(self, parent: int | str) -> None:
+        self._contenedor = dpg.add_group(parent=parent)
+        self._pie_tag = dpg.add_text("Visualización calculada por el motor estadístico.",
+                                     parent=self._contenedor, wrap=760)
+        self._descripcion_tag = dpg.add_text(self._descripcion, parent=self._contenedor,
+                                             wrap=760, color=(96, 117, 140, 255))
+
+    def _pie(self, contenido: str) -> None:
+        if self._pie_tag is not None:
+            dpg.set_value(self._pie_tag, contenido)
+
+    def _describir(self, texto: str) -> None:
+        if self._ultimo is not None:
+            texto += " Las ediciones de la tabla son anotaciones y no actualizan este gráfico."
+        self._descripcion = texto
+        if self._descripcion_tag is not None:
+            dpg.set_value(self._descripcion_tag, texto)
+
+    def tema(self, oscuro: bool) -> None:
         self.oscuro = oscuro
-        # Matplotlib consulta la paleta nativa, no QSS, para invertir sus iconos SVG.
-        paleta = self.barra.palette()
-        paleta.setColor(self.barra.backgroundRole(), QColor("#19283B" if oscuro else "#FFFFFF"))
-        paleta.setColor(self.barra.foregroundRole(), QColor("#E8EDF4" if oscuro else "#172B45"))
-        self.barra.setPalette(paleta)
-        self.barra.update()
         if self._ultimo:
             funcion, args, kwargs = self._ultimo
             getattr(self, funcion)(*args, **kwargs)
         else:
             self.vacio()
 
-    def escalar_texto(self, factor: float):
+    def escalar_texto(self, factor: float) -> None:
         self._escala = factor
         if self._ultimo:
             funcion, args, kwargs = self._ultimo
@@ -71,30 +70,39 @@ class Grafico(QWidget):
         else:
             self.vacio()
 
-    def _describir(self, texto: str):
-        """La descripción usa datos originales; no calcula nuevas estadísticas."""
-        if self._ultimo is not None:
-            texto += " Las ediciones de la tabla son anotaciones y no actualizan este gráfico."
-        self.descripcion.setText(texto)
-        self.lienzo.setAccessibleDescription(texto)
+    def _fin(self) -> None:
+        for eje in self.figura.axes:
+            eje.title.set_fontsize(12 * self._escala)
+            eje.xaxis.label.set_fontsize(11 * self._escala)
+            eje.yaxis.label.set_fontsize(11 * self._escala)
+            if eje.get_legend():
+                for texto in eje.get_legend().get_texts():
+                    texto.set_fontsize(10 * self._escala)
+        self.figura.tight_layout(pad=1.6)
+        self.lienzo.draw()
+        if self._contenedor is None:
+            return
+        if self._ultimo is None:
+            if self._imagen is not None and dpg.does_item_exist(self._imagen):
+                dpg.configure_item(self._imagen, show=False)
+            return
+        rgba = np.asarray(self.lienzo.buffer_rgba(), dtype=np.float32).copy()
+        rgba /= 255.0
+        valores = rgba.reshape(-1).tolist()
+        if self._textura is None:
+            if not dpg.does_item_exist("ampu_texturas"):
+                dpg.add_texture_registry(tag="ampu_texturas")
+            self._textura = dpg.add_dynamic_texture(self.ANCHO, self.ALTO, valores,
+                                                    parent="ampu_texturas")
+            self._imagen = dpg.add_image(self._textura, parent=self._contenedor,
+                                         before=self._pie_tag, width=self.ANCHO, height=self.ALTO)
+        else:
+            dpg.set_value(self._textura, valores)
+        dpg.configure_item(self._imagen, show=True)
 
     def _tinta(self) -> str:
         """Color de texto/ticks según el tema activo."""
         return "#E5ECF3" if self.oscuro else "#30445C"
-
-    def _animar_aparicion(self):
-        """Transición breve de aparición del gráfico recién dibujado (no bloquea)."""
-        if self._efecto is None:
-            self._efecto = QGraphicsOpacityEffect(self.lienzo)
-            self.lienzo.setGraphicsEffect(self._efecto)
-        self._efecto.setOpacity(0.0)
-        anim = QPropertyAnimation(self._efecto, b"opacity", self)
-        anim.setDuration(240)
-        anim.setStartValue(0.0)
-        anim.setEndValue(1.0)
-        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        anim.start()
-        self._animacion = anim  # evita que el recolector destruya la animación
 
     def _ejes(self):
         """Reinicia ejes y paleta compatibles con fondo claro u oscuro."""
@@ -114,19 +122,6 @@ class Grafico(QWidget):
         ax.set_axisbelow(True)
         ax.margins(x=.04)
         return ax
-
-    def _fin(self):
-        """Dibuja fuera del hilo de cálculo, únicamente en el hilo principal."""
-        for eje in self.figura.axes:
-            eje.title.set_fontsize(12 * self._escala)
-            eje.xaxis.label.set_fontsize(11 * self._escala)
-            eje.yaxis.label.set_fontsize(11 * self._escala)
-            if eje.get_legend():
-                for texto in eje.get_legend().get_texts():
-                    texto.set_fontsize(10 * self._escala)
-        self.figura.tight_layout(pad=1.6)
-        self.lienzo.draw_idle()
-        self._animar_aparicion()
 
     def vacio(self):
         """Representa estado inicial ligero, sin muestras inventadas."""
@@ -172,7 +167,7 @@ class Grafico(QWidget):
                    + (" · marginal simulada" if resultado.marginal else ""))
             ax.set_ylim(bottom=0)
         ax.set_xlabel("x" if not resultado.marginal else "Primera componente")
-        self.pie.setText("Punto naranja = evento x; el área sombreada representa P(X ≤ x)." if not resultado.marginal else
+        self._pie("Punto naranja = evento x; el área sombreada representa P(X ≤ x)." if not resultado.marginal else
                          "Gráfico de la primera marginal simulada; consulta conjunta en la tabla.")
         if resultado.marginal:
             self._describir("Primera marginal simulada, no densidad o masa conjunta. "
@@ -204,7 +199,7 @@ class Grafico(QWidget):
         ax.set_ylabel("Unidades")
         ax.set_title("Diseño muestral")
         ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
-        self.pie.setText("Las barras reflejan el diseño exportable, no una estimación adicional.")
+        self._pie("Las barras reflejan el diseño exportable, no una estimación adicional.")
         self._describir("Barras comparativas de población y muestra por grupo: " +
                        "; ".join(f"{etiqueta}: población {total}, muestra {elegidos}"
                                  for etiqueta, total, elegidos in list(zip(etiquetas, poblacion, seleccion))[:10]) +
@@ -224,7 +219,7 @@ class Grafico(QWidget):
             ax.bar_label(barras, fmt="%.4g", fontsize=8 * self._escala, color=self._tinta(), padding=2)
         ax.margins(y=.12)
         ax.set(title=titulo, ylabel="Valor")
-        self.pie.setText("Altura de cada barra calculada por el motor estadístico.")
+        self._pie("Altura de cada barra calculada por el motor estadístico.")
         self._describir(f"{titulo}: gráfico de barras. " +
                        "; ".join(f"{etiqueta}: {valor:.6g}" for etiqueta, valor in
                                  list(zip(etiquetas, valores))[:10]) +
@@ -251,7 +246,7 @@ class Grafico(QWidget):
                     edgecolor="#25364B" if self.oscuro else "#FFFFFF", alpha=.95)
             ax.set(xlabel="Observación", ylabel="Frecuencia")
         ax.set_title(modo if modo != "Dispersión" or y is not None else "Histograma")
-        self.pie.setText("Selecciona, amplía o guarda el gráfico con la barra superior.")
+        self._pie("Selecciona, amplía o guarda el gráfico con la barra superior.")
         self._describir((f"Diagrama de dispersión con {len(datos)} pares X e Y." if modo == "Dispersión" and y is not None
                          else f"Diagrama de caja con {len(datos)} observaciones." if modo == "Boxplot"
                          else f"Histograma con {len(datos)} observaciones.") +
@@ -269,7 +264,7 @@ class Grafico(QWidget):
                     lw=2.2, ls="--", label="Ajuste")
             ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
         ax.set(xlabel="X", ylabel="Y", title=titulo)
-        self.pie.setText("Las predicciones de la línea proceden del motor de regresión.")
+        self._pie("Las predicciones de la línea proceden del motor de regresión.")
         self._describir(f"{titulo}: dispersión de {len(x)} pares observados" +
                        (" con línea de ajuste entregada por el motor." if ajuste is not None else ".") +
                        " Consulta la tabla y la conclusión para interpretar el modelo.")
@@ -286,7 +281,7 @@ class Grafico(QWidget):
         ax.set(xlim=(0, 1), ylim=(0, 1), xlabel="Coordenada U", ylabel="Coordenada V", title="El área del cuarto de círculo")
         ax.set_aspect("equal", adjustable="box")
         ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
-        self.pie.setText("Verde: dentro · naranja: fuera. Semilla y tamaño reproducibles.")
+        self._pie("Verde: dentro · naranja: fuera. Semilla y tamaño reproducibles.")
         self._describir(f"Simulación visual de {len(puntos)} puntos en un cuadrado unitario: "
                        "verde representa dentro del cuarto de círculo y naranja fuera. "
                        "El resultado y la semilla constan en la tabla.")
@@ -302,7 +297,7 @@ class Grafico(QWidget):
                 ls="--", label="Ajuste")
         ax.set(title="Datos reales frente a densidad ajustada", xlabel="Valor", ylabel="Densidad")
         ax.legend(frameon=False, labelcolor="#D5E0EB" if self.oscuro else "#344B62")
-        self.pie.setText("Compara forma y colas; la p de KS posterior al ajuste es exploratoria.")
+        self._pie("Compara forma y colas; la p de KS posterior al ajuste es exploratoria.")
         self._describir(f"Histograma de {len(datos)} datos reales junto a la densidad ajustada "
                        "por el motor. La prueba KS posterior al ajuste es exploratoria; "
                        "valores y advertencias en la tabla.")
@@ -316,7 +311,7 @@ class Grafico(QWidget):
         ax.plot([teorico.min(), teorico.max()], [muestra.min(), muestra.max()], ls="--",
                 color="#FFB36B" if self.oscuro else "#A85219")
         ax.set(xlabel="Cuantil teórico", ylabel="Cuantil empírico", title="QQ-plot · datos frente al modelo")
-        self.pie.setText("Una curva sistemática o colas apartadas sugieren desajuste.")
+        self._pie("Una curva sistemática o colas apartadas sugieren desajuste.")
         self._describir(f"Gráfico de cuantiles teóricos frente a {len(muestra)} cuantiles "
                        "empíricos y línea de referencia. Revisa la tabla para los valores exactos.")
         self._fin()
