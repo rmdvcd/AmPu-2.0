@@ -1,6 +1,13 @@
 # Registro de cambios
 
-## Sin publicar · cierre de pendientes de 3.0
+## Sin publicar · migración a Dear PyGui — 2026-11-03
+
+- Sustituida completamente la capa gráfica PySide6/QtWebEngine por **Dear PyGui**. El motor NumPy/SciPy/pandas y los exportadores conservan su API.
+- Migradas las siete vistas, navegación, formularios, tablas editables, asistente, temas, sesiones y capturas; los cálculos usan `ThreadPoolExecutor` y los gráficos Matplotlib `Agg` se presentan como texturas.
+- La teoría usa texto seleccionable, código LaTeX y figuras locales sin navegador incrustado. HTML/KaTeX/STIX se mantienen únicamente para las APIs documentales existentes.
+- Preferencias locales JSON, pruebas reales Dear PyGui sin viewport y empaquetado PyInstaller sin Qt. Actualizados diagnóstico, scripts y documentación.
+
+## Histórico · cierre de pendientes de la implementación Qt
 
 - Corregido el arranque: `Grafico` usaba `QGraphicsOpacityEffect`, `QPropertyAnimation` y `QEasingCurve` sin importarlas, por lo que la aplicación fallaba con `NameError` al construir la primera vista. El pie del gráfico ahora ajusta el texto, de modo que la interfaz no genera desplazamiento horizontal al aumentar el tamaño de letra. Prueba de tema oscuro alineada con el acento vigente (`#67D8CA`).
 - Revisión visual de AmPu 3.0: tipografía base y etiquetas más legibles, superficies y controles con mayor separación, estados de foco/selección más visibles, paletas claro/oscuro reforzadas y gráficos adaptados a ambas. Se eliminó el modo de alto contraste; preferencias heredadas migran a «Seguir sistema». El panel de parámetros evita espacio vacío excesivo.

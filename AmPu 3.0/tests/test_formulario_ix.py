@@ -1,28 +1,30 @@
-"""Los parámetros dinámicos no quedan dibujados fuera del formulario."""
+"""Formularios Dear PyGui generados por metadatos y entradas recuperables."""
 
-import os
-
-import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
-from PySide6.QtWidgets import QApplication, QFormLayout  # noqa: E402
+import dearpygui.dearpygui as dpg
 
 
-def test_parametros_antiguos_ocultos_y_editores_legibles_a_200_por_ciento():
+def test_campos_antiguos_se_eliminan_al_cambiar_modelo(contexto_dpg):
     from ampu.core.distribuciones import obtener
     from ampu.ui.widgets.formulario import FormularioDistribucion
 
-    app = QApplication.instance() or QApplication([])
-    formulario = FormularioDistribucion()
-    formulario.usar(obtener("binomial"))
-    antiguos = list(formulario.controles.values())
-    formulario.usar(obtener("normal"))
-    assert all(not control.isVisible() for control in antiguos)
-    formulario.ajustar_escala(2.0)
-    formulario.show()
-    app.processEvents()
-    assert formulario.formulario.rowWrapPolicy() == QFormLayout.WrapAllRows
-    assert formulario.height() >= formulario.sizeHint().height()
-    assert all(control.height() >= 70 for control in formulario.controles.values())
-    formulario.close()
+    with dpg.window():
+        formulario = FormularioDistribucion(dpg.last_container())
+        formulario.usar(obtener("binomial"))
+        antiguos = list(formulario.controles.values())
+        formulario.usar(obtener("normal"))
+        assert all(not dpg.does_item_exist(control) for control in antiguos)
+        assert set(formulario.controles) == {"mu", "sigma"}
+
+
+def test_formulario_conserva_entrada_vectorial_invalida(contexto_dpg):
+    from ampu.core.distribuciones import obtener
+    from ampu.ui.widgets.formulario import FormularioDistribucion
+
+    with dpg.window():
+        formulario = FormularioDistribucion(dpg.last_container())
+        formulario.usar(obtener("multinomial"))
+        dpg.set_value(formulario.controles["p"], "0.1, pendiente, 0.9")
+        estado = formulario.estado()
+        assert estado["p"] == "0.1, pendiente, 0.9"
+        formulario.restaurar(estado)
+        assert dpg.get_value(formulario.controles["p"]) == "0.1, pendiente, 0.9"

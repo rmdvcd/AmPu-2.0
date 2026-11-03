@@ -1,8 +1,6 @@
-"""Empaqueta AmPu 3.0 con PyInstaller en el SO en que se ejecuta.
+"""Empaqueta AmPu 3.0/Dear PyGui con PyInstaller en el SO anfitrión."""
 
-Windows -> dist/AmPu3.exe; Linux -> dist/AmPu3; macOS -> dist/AmPu3.app.
-El recurso QtWebEngineProcess debe ir incluido por los hooks de PyInstaller.
-"""
+from __future__ import annotations
 
 import argparse
 import os
@@ -16,24 +14,21 @@ ASSETS = SRC / "ampu"
 
 
 def comando(onefile: bool = True) -> list[str]:
-    """Construye argumentos sin rutas absolutas escritas en archivos/versiones."""
-    if sys.version_info < (3, 12):
-        raise RuntimeError("El empaquetado requiere Python 3.12 o posterior.")
-    if not (ASSETS / "docs" / "render" / "katex.min.js").exists():
-        raise RuntimeError("Faltan recursos KaTeX offline.")
+    """Construye argumentos reproducibles; la validación de Python vive en main."""
+    if not (ASSETS / "docs" / "teoria" / "binomial.md").exists():
+        raise RuntimeError("Faltan lecciones offline.")
     piezas = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean",
               "--name", "AmPu3", "--distpath", str(RAIZ / "dist"),
               "--workpath", str(RAIZ / "build"), "--specpath", str(RAIZ / "build"),
-              "--paths", str(SRC), "--hidden-import", "PySide6.QtWebEngineWidgets",
-              "--hidden-import", "PySide6.QtWebEngineCore",
+              "--paths", str(SRC), "--hidden-import", "dearpygui.dearpygui",
               "--exclude-module", "pytest", "--exclude-module", "tests",
-              "--exclude-module", "tkinter", "--exclude-module", "IPython"]
-    for carpeta in ("docs", "ui/estilos", "ui/recursos"):
+              "--exclude-module", "tkinter", "--exclude-module", "IPython",
+              "--exclude-module", "PySide6", "--exclude-module", "PyQt6",
+              "--exclude-module", "PyQt5"]
+    for carpeta in ("docs", "ui/recursos"):
         origen = ASSETS / carpeta
-        # PyInstaller utiliza os.pathsep como separador en --add-data.
         piezas += ["--add-data", f"{origen}{os.pathsep}ampu/{carpeta}"]
     if sys.platform == "darwin":
-        # En macOS un .app en directorio permite a QtWebEngine lanzar su helper.
         piezas += ["--onedir", "--windowed"]
         icono = ASSETS / "ui" / "recursos" / "icono.icns"
     else:
@@ -50,12 +45,13 @@ def comando(onefile: bool = True) -> list[str]:
 
 
 def main():
-    """Invoca PyInstaller y comprueba la existencia del artefacto resultante."""
     parser = argparse.ArgumentParser(description="Construye un ejecutable nativo de AmPu 3.0")
-    parser.add_argument("--onedir", action="store_true", help="Carpeta portable en lugar de archivo único (Linux/Windows)")
-    parser.add_argument("--gui-self-test", action="store_true",
-                        help="Además prueba QtWebEngine y KaTeX en un escritorio con NSS/GL/X11")
+    parser.add_argument("--onedir", action="store_true", help="Carpeta portable en lugar de archivo único")
+    parser.add_argument("--gui-self-test", "--ui-self-test", action="store_true",
+                        help="Ejecuta la autoprueba Dear PyGui del artefacto, sin viewport")
     args = parser.parse_args()
+    if sys.version_info < (3, 12):
+        raise RuntimeError("El empaquetado requiere Python 3.12 o posterior.")
     invocacion = comando(onefile=not args.onedir)
     print("Empaquetando en", sys.platform, "· Python", sys.version.split()[0], flush=True)
     subprocess.run(invocacion, cwd=RAIZ, check=True)
@@ -76,8 +72,8 @@ def main():
         subprocess.run([str(ejecutable), argumento], cwd=RAIZ, check=True, timeout=180)
     print("Versión, lecciones, recursos y exportaciones verificados en el artefacto.", flush=True)
     if args.gui_self_test:
-        subprocess.run([str(ejecutable), "--self-test"], cwd=RAIZ, check=True, timeout=120)
-        print("QtWebEngine/KaTeX verificados en este escritorio.", flush=True)
+        subprocess.run([str(ejecutable), "--self-test"], cwd=RAIZ, check=True, timeout=180)
+        print("Dear PyGui, módulos, teoría y asistente verificados.", flush=True)
 
 
 if __name__ == "__main__":

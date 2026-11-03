@@ -1,360 +1,228 @@
-"""Asistente matemático no modal: aritmética explicada y LaTeX editable."""
+"""Asistente matemático no modal implementado íntegramente con Dear PyGui."""
 
-import re
+from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import (
-    QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QListWidget, QListWidgetItem, QPlainTextEdit, QPushButton, QStackedWidget,
-    QTabWidget, QVBoxLayout, QWidget,
-)
+from collections.abc import Callable
+
+import dearpygui.dearpygui as dpg
+import numpy as np
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 
 from ampu.core.errores import ParametroInvalidoError
 from ampu.core.estadistica.calculadora import explicar
-from ampu.docs.expresiones import RECURSOS, previsualizar_latex
-from ampu.ui.widgets.editor_matematico import EditorLatex
+from ampu.ui.widgets.comunes import Selector, establecer, texto
 
-_PALETA = {
-    "Álgebra": [("Fracción", r"\frac{a}{b}", "a"), ("Raíz", r"\sqrt{x}", "x"),
-                 ("Potencia", "x^{n}", "n")],
-    "Cálculo": [("Integral", r"\int_{a}^{b} f(x)\,dx", "f(x)"),
-                ("Sumatoria", r"\sum_{i=1}^{n} x_i", "x_i")],
-    "Matrices": [("Matriz 2×2", r"\begin{pmatrix}a&b\\c&d\end{pmatrix}", "a")],
-    "Griego": [("Alfa", r"\alpha", None), ("Sigma", r"\sigma", None),
-               ("Media", r"\mu", None)],
+PALETA = {
+    "Álgebra": [("Fracción", r"\frac{a}{b}"), ("Raíz", r"\sqrt{x}"), ("Potencia", "x^{n}")],
+    "Cálculo": [("Integral", r"\int_{a}^{b} f(x)\,dx"), ("Sumatoria", r"\sum_{i=1}^{n} x_i")],
+    "Matrices": [("Matriz 2×2", r"\begin{pmatrix}a&b\\c&d\end{pmatrix}")],
+    "Griego": [("Alfa", r"\alpha"), ("Sigma", r"\sigma"), ("Media", r"\mu")],
 }
 
 
-class Calculadora(QWidget):
-    """Herramienta persistente y acoplable; no promete resolver LaTeX arbitrario."""
+class Calculadora:
+    """Aritmética explicada y LaTeX editable, sin ejecutar código arbitrario."""
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAccessibleName("Asistente matemático")
+    def __init__(self):
+        self._resultado: float | None = None
+        self._historial: list[str] = []
         self.tema_actual = "claro"
         self.escala_actual = 1.0
-        self._navegador = None
-        self._resultado: float | None = None
-        root = QVBoxLayout(self)
-        root.setContentsMargins(12, 12, 12, 12)
-        self.pestanas = QTabWidget()
-        self.pestanas.addTab(self._panel_calculo(), "Cálculo explicado")
-        self.pestanas.addTab(self._panel_latex(), "Fórmula LaTeX")
-        self.pestanas.currentChanged.connect(self._cambio_pestana)
-        root.addWidget(self.pestanas)
-        self._debounce = QTimer(self)
-        self._debounce.setInterval(220)
-        self._debounce.setSingleShot(True)
-        self._debounce.timeout.connect(self._previsualizar)
+        self.pestana_actual = 0
+        self.entrada_modificada: Callable[[], None] = lambda: None
+        self.window = dpg.add_window(label="Asistente matemático · AmPu 3.0", width=490,
+            height=710, show=False, pos=[720, 80], on_close=lambda: dpg.hide_item(self.window))
+        with dpg.tab_bar(parent=self.window, callback=self._cambio_pestana) as self.pestanas:
+            with dpg.tab(label="Cálculo explicado", tag="asistente_calculo"):
+                self._panel_calculo()
+            with dpg.tab(label="Fórmula LaTeX", tag="asistente_latex"):
+                self._panel_latex()
+        self._figura = Figure(figsize=(4.2, 1.2), dpi=100)
+        self._lienzo = FigureCanvasAgg(self._figura)
+        self._textura = self._imagen = None
+        self._actualizar_historial()
 
-    def _panel_calculo(self):
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.addWidget(self._texto("Solo aritmética numérica; sin resolver ecuaciones simbólicas. "
-                                    "Trigonometría en radianes, log base 10 y ln natural."))
-        self.entrada = QLineEdit()
-        self.entrada.setAccessibleName("Expresión aritmética")
-        self.entrada.setPlaceholderText("sqrt(2) + sin(pi/2)")
-        self.entrada.returnPressed.connect(self._evaluar)
-        self.entrada.textEdited.connect(self._limpiar_resultado)
-        layout.addWidget(self.entrada)
-        acciones = QHBoxLayout()
-        boton = QPushButton("Calcular · Intro")
-        boton.setObjectName("Primary")
-        boton.clicked.connect(self._evaluar)
-        acciones.addWidget(boton)
-        copiar = QPushButton("Copiar resultado")
-        copiar.setObjectName("Secondary")
-        copiar.clicked.connect(self.copiar_resultado)
-        acciones.addWidget(copiar)
-        layout.addLayout(acciones)
-        self.respuesta = QLabel("Resultado final: —")
-        self.respuesta.setObjectName("H2")
-        self.respuesta.setWordWrap(True)
-        self.respuesta.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-        self.respuesta.setAccessibleName("Resultado final del cálculo")
-        layout.addWidget(self.respuesta)
-        self.interpretacion = self._texto("Entrada interpretada: —")
-        layout.addWidget(self.interpretacion)
-        layout.addWidget(self._texto("Pasos reales del motor (sustituciones numéricas, no álgebra simbólica):"))
-        self.pasos = QPlainTextEdit()
-        self.pasos.setReadOnly(True)
-        self.pasos.setAccessibleName("Pasos numerados de cálculo y justificaciones")
-        self.pasos.setPlaceholderText("Pulsa Calcular para ver cómo se obtuvo el resultado.")
-        layout.addWidget(self.pasos, 1)
-        layout.addWidget(self._texto("Historial de esta sesión · doble clic o Enter para reutilizar:"))
-        self.historial = QListWidget()
-        self.historial.setMaximumHeight(120)
-        self.historial.setAccessibleName("Historial de expresiones y resultados")
-        self.historial.itemActivated.connect(self._reutilizar)
-        self.historial.itemDoubleClicked.connect(self._reutilizar)
-        layout.addWidget(self.historial)
+    def _cambio(self, *_args) -> None:
+        self.entrada_modificada()
+
+    def _panel_calculo(self) -> None:
+        dpg.add_text("Aritmética numérica; no resuelve ecuaciones simbólicas.\n"
+                     "Trigonometría en radianes, log base 10 y ln natural.", wrap=450)
+        self.entrada = dpg.add_input_text(hint="sqrt(2) + sin(pi/2)", width=-1,
+            on_enter=True, callback=self._entrada_cambiada)
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Calcular", callback=self._evaluar)
+            dpg.add_button(label="Copiar resultado", callback=self.copiar_resultado)
+        self.respuesta = dpg.add_text("Resultado final: —", wrap=450)
+        self.interpretacion = dpg.add_text("Entrada interpretada: —", wrap=450)
+        dpg.add_text("Sustituciones reales del motor:")
+        self.pasos = dpg.add_input_text(multiline=True, readonly=True, width=-1, height=145)
+        dpg.add_text("Historial · selecciona para reutilizar")
+        self.historial = dpg.add_listbox([], width=-1, num_items=4, callback=self._reutilizar)
         teclas = [["7", "8", "9", "/", "sqrt("], ["4", "5", "6", "*", "^"],
                   ["1", "2", "3", "-", "pi"], ["0", ".", "(", ")", "+"],
                   ["sin(", "cos(", "ln(", "log(", "="]]
-        grid = QGridLayout()
-        for row, fila in enumerate(teclas):
-            for col, tecla in enumerate(fila):
-                boton = QPushButton(tecla)
-                boton.setAccessibleName("Calcular expresión" if tecla == "=" else f"Insertar {tecla}")
-                boton.setObjectName("Primary" if tecla == "=" else "Secondary")
-                boton.clicked.connect(lambda checked=False, t=tecla: self._pulsar(t))
-                grid.addWidget(boton, row, col)
-        layout.addLayout(grid)
-        return panel
+        for fila in teclas:
+            with dpg.group(horizontal=True):
+                for tecla in fila:
+                    dpg.add_button(label=tecla, width=78,
+                                   callback=lambda _s, _a, t=tecla: self._pulsar(t))
 
-    def _panel_latex(self):
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.addWidget(self._texto("Escribe o pega LaTeX para visualizar y copiar una fórmula; "
-                                    "esta pestaña NO evalúa ni resuelve expresiones."))
-        self.latex = EditorLatex()
-        self.latex.setAccessibleName("Código de expresión LaTeX editable")
-        self.latex.setPlaceholderText(r"\frac{1}{\sqrt{2\pi}}e^{-x^2/2}")
-        self.latex.setMaximumHeight(100)
-        self.latex.textChanged.connect(self._solicitar_vista)
-        layout.addWidget(self.latex)
-        herramientas = QHBoxLayout()
-        self.categoria = QComboBox()
-        self.categoria.setAccessibleName("Categoría de símbolos matemáticos")
-        self.categoria.addItems(_PALETA)
-        self.categoria.currentTextChanged.connect(self._mostrar_plantillas)
-        herramientas.addWidget(self.categoria)
-        self.plantillas = QWidget()
-        self.fila_plantillas = QHBoxLayout(self.plantillas)
-        self.fila_plantillas.setContentsMargins(0, 0, 0, 0)
-        herramientas.addWidget(self.plantillas, 1)
-        layout.addLayout(herramientas)
+    def _panel_latex(self) -> None:
+        dpg.add_text("LaTeX para visualizar/copiar; esta pestaña NO calcula.", wrap=450)
+        self.latex = dpg.add_input_text(multiline=True, width=-1, height=80,
+            hint=r"\frac{1}{\sqrt{2\pi}}e^{-x^2/2}", callback=self._latex_cambiado)
+        self.categoria = Selector(dpg.last_container(), list(PALETA), callback=self._mostrar_plantillas)
+        self.grupo_plantillas = dpg.add_group(horizontal=True)
         self._mostrar_plantillas()
-        acciones = QHBoxLayout()
-        copiar = QPushButton("Copiar LaTeX")
-        copiar.setObjectName("Secondary")
-        copiar.clicked.connect(self.copiar_latex)
-        acciones.addWidget(copiar)
-        self.copiar_mathml_boton = QPushButton("Copiar MathML")
-        self.copiar_mathml_boton.setObjectName("Secondary")
-        self.copiar_mathml_boton.setEnabled(False)
-        self.copiar_mathml_boton.clicked.connect(self.copiar_mathml)
-        acciones.addWidget(self.copiar_mathml_boton)
-        layout.addLayout(acciones)
-        self.estado_vista = self._texto("Vista previa con MathML accesible cuando QtWebEngine esté disponible.")
-        self.estado_vista.setAccessibleName("Estado de la vista matemática")
-        layout.addWidget(self.estado_vista)
-        self.previsualizacion = QStackedWidget()
-        self.alternativa = self._texto("Introduce LaTeX. El código lineal permanece editable y copiable arriba.")
-        self.alternativa.setAccessibleName("Alternativa textual a la vista matemática")
-        self.previsualizacion.addWidget(self.alternativa)
-        layout.addWidget(self.previsualizacion, 1)
-        return panel
+        dpg.add_button(label="Copiar LaTeX", callback=self.copiar_latex)
+        self.estado_vista = dpg.add_text("Vista previa local con MathText; el código lineal siempre permanece disponible.", wrap=450)
+        self.grupo_formula = dpg.add_group()
 
-    @staticmethod
-    def _texto(texto: str) -> QLabel:
-        etiqueta = QLabel(texto)
-        etiqueta.setWordWrap(True)
-        return etiqueta
+    def _cambio_pestana(self, _sender, app_data, _user_data) -> None:
+        self.pestana_actual = 1 if app_data == "asistente_latex" else 0
+        if self.pestana_actual:
+            self._previsualizar()
 
-    def _limpiar_resultado(self):
-        """No confundir una entrada modificada con un resultado ya actualizado."""
+    def _entrada_cambiada(self, *_args) -> None:
+        self._limpiar_resultado()
+        self._cambio()
+
+    def _latex_cambiado(self, *_args) -> None:
+        self._previsualizar()
+        self._cambio()
+
+    def _limpiar_resultado(self) -> None:
         self._resultado = None
-        self.respuesta.setText("Resultado final: pendiente de calcular")
-        self.interpretacion.setText("Entrada interpretada: pendiente de calcular")
-        self.pasos.clear()
+        dpg.set_value(self.respuesta, "Resultado final: pendiente de calcular")
+        dpg.set_value(self.interpretacion, "Entrada interpretada: pendiente de calcular")
+        dpg.set_value(self.pasos, "")
 
-    def _pulsar(self, tecla: str):
-        """Botones de precisión insertan texto en la posición del cursor."""
+    def _pulsar(self, tecla: str) -> None:
         if tecla == "=":
             self._evaluar()
         else:
-            self.entrada.insert(tecla)
+            establecer(self.entrada, texto(self.entrada) + tecla)
             self._limpiar_resultado()
-            self.entrada.setFocus()
+            self._cambio()
+            dpg.focus_item(self.entrada)
 
-    def _evaluar(self):
-        """Único evaluador: el AST del núcleo devuelve resultado y pasos."""
+    def _evaluar(self, *_args) -> None:
         try:
-            analisis = explicar(self.entrada.text())
+            analisis = explicar(texto(self.entrada))
         except ParametroInvalidoError as exc:
             self._resultado = None
-            self.respuesta.setText(f"Error: {exc}")
-            self.interpretacion.setText("Entrada interpretada: revisa la expresión")
-            self.pasos.setPlainText("Corrige el fragmento indicado; la entrada sigue editable y Ctrl+Z funciona.")
-            posicion = re.search(r"columna (\d+)", str(exc))
-            if posicion:
-                inicio = min(int(posicion.group(1)) - 1, len(self.entrada.text()))
-                if inicio < len(self.entrada.text()):
-                    self.entrada.setSelection(inicio, 1)
-                else:
-                    self.entrada.setCursorPosition(inicio)
-            self.entrada.setFocus(Qt.OtherFocusReason)
+            dpg.set_value(self.respuesta, f"Error: {exc}")
+            dpg.set_value(self.interpretacion, "Entrada interpretada: revisa la expresión")
+            dpg.set_value(self.pasos, "Corrige el fragmento indicado; la entrada sigue editable.")
+            dpg.focus_item(self.entrada)
             return
         self._resultado = analisis.resultado
-        self.respuesta.setText(f"Resultado final: {analisis.resultado:.12g}")
-        self.respuesta.setToolTip(str(analisis.resultado))
-        self.interpretacion.setText(f"Entrada interpretada: {analisis.interpretacion}")
+        dpg.set_value(self.respuesta, f"Resultado final: {analisis.resultado:.12g}")
+        dpg.set_value(self.interpretacion, f"Entrada interpretada: {analisis.interpretacion}")
         lineas = [analisis.supuestos]
-        lineas += [f"{numero}. {paso.expresion} → {paso.sustitucion} = {paso.resultado:.12g}\n"
-                   f"   {paso.justificacion}" for numero, paso in enumerate(analisis.pasos, 1)]
-        self.pasos.setPlainText("\n\n".join(lineas))
-        if self.historial.count() == 0 or self.historial.item(0).data(Qt.UserRole) != analisis.entrada:
-            item = QListWidgetItem(f"{analisis.entrada} = {analisis.resultado:.12g}")
-            item.setData(Qt.UserRole, analisis.entrada)
-            item.setToolTip("Pulsa Enter para reutilizar y volver a calcular")
-            self.historial.insertItem(0, item)
-        while self.historial.count() > 30:
-            self.historial.takeItem(self.historial.count() - 1)
+        lineas += [f"{n}. {p.expresion} → {p.sustitucion} = {p.resultado:.12g}\n   {p.justificacion}"
+                   for n, p in enumerate(analisis.pasos, 1)]
+        dpg.set_value(self.pasos, "\n\n".join(lineas))
+        if not self._historial or self._historial[0] != analisis.entrada:
+            self._historial.insert(0, analisis.entrada)
+            del self._historial[30:]
+        self._actualizar_historial()
 
-    def _reutilizar(self, item: QListWidgetItem):
-        self.entrada.setText(item.data(Qt.UserRole))
+    def _actualizar_historial(self) -> None:
+        self._historial_etiquetas = [f"{e} = {explicar(e).resultado:.8g}" if self._es_segura_historial(e) else e
+                                     for e in self._historial]
+        dpg.configure_item(self.historial, items=self._historial_etiquetas)
+
+    @staticmethod
+    def _es_segura_historial(expresion: str) -> bool:
+        try:
+            explicar(expresion)
+            return True
+        except (ParametroInvalidoError, ValueError, TypeError):
+            return False
+
+    def _reutilizar(self, _sender, app_data, _user_data) -> None:
+        indice = self._historial_etiquetas.index(app_data)
+        establecer(self.entrada, self._historial[indice])
         self._evaluar()
-        self.entrada.setFocus()
 
-    def copiar_resultado(self):
+    def copiar_resultado(self) -> None:
         if self._resultado is not None:
-            QApplication.clipboard().setText(str(self._resultado))
+            dpg.set_clipboard_text(str(self._resultado))
         else:
-            self.respuesta.setText("Primero calcula una expresión válida para copiar el resultado.")
+            dpg.set_value(self.respuesta, "Primero calcula una expresión válida para copiar el resultado.")
 
-    def copiar_latex(self):
-        QApplication.clipboard().setText(self.latex.toPlainText())
-        self.estado_vista.setText("Código LaTeX copiado como texto editable.")
+    def copiar_latex(self) -> None:
+        dpg.set_clipboard_text(texto(self.latex))
+        dpg.set_value(self.estado_vista, "Código LaTeX copiado como texto editable.")
 
-    def copiar_mathml(self):
-        if self._navegador is None:
+    def _mostrar_plantillas(self, *_args) -> None:
+        dpg.delete_item(self.grupo_plantillas, children_only=True, slot=1)
+        for nombre, plantilla in PALETA[self.categoria.valor]:
+            dpg.add_button(parent=self.grupo_plantillas, label=nombre, small=True,
+                           callback=lambda _s, _a, p=plantilla: self.insertar_plantilla(p))
+
+    def insertar_plantilla(self, plantilla: str, _seleccion: str | None = None) -> None:
+        establecer(self.latex, texto(self.latex) + plantilla)
+        self._previsualizar()
+        self._cambio()
+        dpg.focus_item(self.latex)
+
+    def _previsualizar(self) -> None:
+        if not hasattr(self, "_figura"):
             return
-        self._navegador.page().runJavaScript(
-            "({fuente: document.querySelector('#fuente')?.textContent || '', "
-            "math: document.querySelector('#formula math')?.outerHTML || ''})",
-            self._mathml_copiado
-        )
-
-    def _mathml_copiado(self, dato):
-        if not isinstance(dato, dict) or dato.get("fuente") != self.latex.toPlainText():
-            self.estado_vista.setText("La vista está desactualizada; espera a la vista previa para copiar MathML.")
-        elif dato.get("math"):
-            QApplication.clipboard().setText(dato["math"])
-            self.estado_vista.setText("MathML estructurado copiado.")
+        codigo = texto(self.latex)
+        self._figura.clear()
+        fondo = "#19283B" if self.tema_actual == "oscuro" else "#FFFFFF"
+        tinta = "#F2F5F9" if self.tema_actual == "oscuro" else "#172B45"
+        self._figura.set_facecolor(fondo)
+        try:
+            if len(codigo) > 2000:
+                raise ParametroInvalidoError("La fórmula LaTeX debe tener hasta 2000 caracteres.")
+            if codigo.strip():
+                self._figura.text(.5, .5, f"${codigo}$", ha="center", va="center",
+                                  fontsize=15 * self.escala_actual, color=tinta)
+            self._lienzo.draw()
+            dpg.set_value(self.estado_vista, "Vista MathText actualizada; LaTeX no se evalúa como cálculo.")
+        except (ValueError, RuntimeError, ParametroInvalidoError) as exc:
+            self._figura.clear()
+            self._figura.set_facecolor(fondo)
+            dpg.set_value(self.estado_vista, f"No se pudo previsualizar: {exc}")
+            return
+        rgba = np.asarray(self._lienzo.buffer_rgba(), dtype=np.float32).copy() / 255.0
+        valores = rgba.reshape(-1).tolist()
+        if not dpg.does_item_exist("ampu_texturas"):
+            dpg.add_texture_registry(tag="ampu_texturas")
+        if self._textura is None:
+            self._textura = dpg.add_dynamic_texture(420, 120, valores, parent="ampu_texturas")
+            self._imagen = dpg.add_image(self._textura, parent=self.grupo_formula,
+                                         width=420, height=120)
         else:
-            self.estado_vista.setText("La fórmula aún no genera MathML; corrige el LaTeX.")
+            dpg.set_value(self._textura, valores)
 
-    def _mostrar_plantillas(self):
-        while self.fila_plantillas.count():
-            item = self.fila_plantillas.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        for nombre, plantilla, seleccion in _PALETA[self.categoria.currentText()]:
-            boton = QPushButton(nombre)
-            boton.setObjectName("Quiet")
-            boton.setAccessibleName(f"Insertar plantilla LaTeX de {nombre}")
-            boton.clicked.connect(lambda checked=False, p=plantilla, s=seleccion: self.insertar_plantilla(p, s))
-            self.fila_plantillas.addWidget(boton)
-
-    def insertar_plantilla(self, plantilla: str, seleccion: str | None = None):
-        cursor = self.latex.textCursor()
-        posicion = cursor.selectionStart()
-        cursor.insertText(plantilla)
-        if seleccion:
-            # Evita seleccionar la «a» del nombre de un comando como \\frac.
-            inicio = plantilla.find("{" + seleccion + "}")
-            if inicio >= 0:
-                inicio += 1
-            else:
-                despues_de_llave = plantilla.find("}" + seleccion)
-                inicio = despues_de_llave + 1 if despues_de_llave >= 0 else plantilla.index(seleccion)
-            cursor.setPosition(posicion + inicio)
-            cursor.setPosition(posicion + inicio + len(seleccion), QTextCursor.KeepAnchor)
-        self.latex.setTextCursor(cursor)
-        self.latex.setFocus()
-
-    def _cambio_pestana(self, indice: int):
-        if indice == 1:
-            self._iniciar_vista()
-            self._solicitar_vista()
-
-    def _iniciar_vista(self):
-        if self._navegador is not None:
-            return
-        try:
-            from PySide6.QtWebEngineCore import QWebEngineSettings
-            from PySide6.QtWebEngineWidgets import QWebEngineView
-            from ampu.ui.vistas.teoria import PaginaTeoria
-
-            navegador = QWebEngineView(self.previsualizacion)
-            navegador.setPage(PaginaTeoria(navegador))
-            navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
-            navegador.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
-            navegador.setAccessibleName("Vista estructurada de la fórmula; MathML con código alternativo")
-            navegador.loadFinished.connect(self._vista_lista)
-            self.previsualizacion.addWidget(navegador)
-            self.previsualizacion.setCurrentWidget(navegador)
-            self._navegador = navegador
-        except (ImportError, OSError) as exc:
-            self.estado_vista.setText(f"Vista matemática no disponible: {exc}. Revisa QtWebEngine en README.")
-            self.alternativa.setText("El código LaTeX de arriba sigue siendo editable y copiable; "
-                                    "la fórmula estructurada requiere QtWebEngine.")
-
-    def _solicitar_vista(self):
-        if self.pestanas.currentIndex() == 1:
-            self.copiar_mathml_boton.setEnabled(False)
-            self._debounce.start()
-
-    def _previsualizar(self):
-        if self._navegador is None:
-            return
-        try:
-            html = previsualizar_latex(self.latex.toPlainText(), self.tema_actual, self.escala_actual)
-        except ParametroInvalidoError as exc:
-            self.estado_vista.setText(str(exc))
-            self._navegador.setHtml(previsualizar_latex("", self.tema_actual, self.escala_actual),
-                                    QUrl.fromLocalFile(str(RECURSOS) + "/"))
-            return
-        self.estado_vista.setText("Actualizando fórmula y alternativa lineal…")
-        self._navegador.setHtml(html, QUrl.fromLocalFile(str(RECURSOS) + "/"))
-
-    def _vista_lista(self, correcto: bool):
-        if not correcto:
-            self.estado_vista.setText("No se cargó la vista matemática local; revisa QtWebEngine.")
-            return
-        self._navegador.page().runJavaScript(
-            "({fuente: document.querySelector('#fuente')?.textContent || '', "
-            "math: !!document.querySelector('#formula math'), "
-            "error: document.querySelector('#estado')?.textContent || ''})",
-            self._estado_mathml
-        )
-
-    def _estado_mathml(self, dato):
-        if not isinstance(dato, dict) or dato.get("fuente") != self.latex.toPlainText():
-            return  # Una respuesta antigua no habilita Copiar MathML para otra entrada.
-        listo = bool(dato.get("math"))
-        self.copiar_mathml_boton.setEnabled(listo)
-        self.estado_vista.setText(dato.get("error") or (
-            "Vista estructurada y MathML disponibles; usa tabulador para acceder al código lineal."
-            if listo else "Introduce LaTeX para obtener la vista matemática."))
-
-    def actualizar_tema(self, tema: str, escala: float = 1.0):
+    def actualizar_tema(self, tema: str, escala: float = 1.0) -> None:
         self.tema_actual = tema
         self.escala_actual = escala
-        if self._navegador is not None:
-            self._solicitar_vista()
+        if hasattr(self, "_figura"):
+            self._previsualizar()
+
+    def mostrar(self) -> None:
+        dpg.show_item(self.window)
+        dpg.focus_item(self.window)
 
     def estado(self) -> dict:
-        return {"entrada": self.entrada.text(), "latex": self.latex.toPlainText(),
-                "pestana": self.pestanas.currentIndex(),
-                "historial": [self.historial.item(i).data(Qt.UserRole) for i in range(self.historial.count())]}
+        return {"entrada": texto(self.entrada), "latex": texto(self.latex),
+                "pestana": self.pestana_actual, "historial": list(self._historial)}
 
-    def restaurar(self, datos: dict):
-        """Conserva texto e historial; no calcula silenciosamente al cargar JSON."""
-        # No truncar una entrada guardada: si supera el límite de evaluación,
-        # debe seguir editable y recuperable sin pérdida silenciosa de datos.
-        self.entrada.setText(str(datos.get("entrada", "")))
+    def restaurar(self, datos: dict) -> None:
+        establecer(self.entrada, str(datos.get("entrada", "")))
         self._limpiar_resultado()
-        self.latex.setPlainText(str(datos.get("latex", "")))
-        self.historial.clear()
+        establecer(self.latex, str(datos.get("latex", "")))
         historial = datos.get("historial", [])
-        if isinstance(historial, list):
-            for expresion in historial[:30]:
-                if isinstance(expresion, str) and 0 < len(expresion) <= 200:
-                    item = QListWidgetItem(expresion)
-                    item.setData(Qt.UserRole, expresion)
-                    self.historial.addItem(item)
-        self.pestanas.setCurrentIndex(1 if datos.get("pestana") == 1 else 0)
+        self._historial = [e for e in historial[:30] if isinstance(e, str) and 0 < len(e) <= 200] if isinstance(historial, list) else []
+        self._actualizar_historial()
+        self.pestana_actual = 1 if datos.get("pestana") == 1 else 0
+        dpg.set_value(self.pestanas, "asistente_latex" if self.pestana_actual else "asistente_calculo")
+        self._previsualizar()

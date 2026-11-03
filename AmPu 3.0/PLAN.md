@@ -9,25 +9,25 @@ El árbol original (`src/`, `test/`, `Libraries/`, etc.) es **solo de lectura**.
 | `UniformeF`, `NormalF`, `ExponencialF`, `JiF`, `TstudentF`, `FdeFisherF` | Continuas SciPy con parámetros explícitos, cuantiles y momentos | `tests/test_distribuciones_continuas.py` |
 | `MASFinito`, `MASInfinito`, `MEstratificado` | Tamaños con corrección finita, selección con semilla y asignación entera | `tests/test_muestreo.py` |
 | `GestionEncabezadoTabla` y modelos Swing | Tabla consultando el registro; columnas de parámetros, PMF/PDF, CDF, cola inclusiva, media, varianza y DE | `tests/test_distribuciones_*.py`, pruebas de UI |
-| `Graficos.java` / JFreeChart | Matplotlib QtAgg con curva PMF/PDF/CDF y región/evento resaltado, barra de herramientas | pruebas de UI y capturas |
+| `Graficos.java` / JFreeChart | Matplotlib Agg integrado como textura Dear PyGui, con curva PMF/PDF/CDF y región/evento resaltado | pruebas de UI y capturas |
 | `ExportarE.java` / POI | Servicio unificado XLSX/CSV/PNG/PDF (guardado único, formato, filas completas y texto pegado no ejecutable) | `tests/test_io.py`, `test_exportacion_segura.py`, `test_diagnostico.py` |
-| 12 HTML de distribuciones + 3 de muestreo | 57 Markdown con fórmulas LaTeX, ejemplos y referencias, 31 figuras nuevas y KaTeX/STIX locales | `tests/test_teoria.py`, `test_webengine.py` en escritorio nativo |
-| `Interfaz.java` | Navegación PySide6, controles dinámicos por metadatos, sesiones editables y vistas para distribuciones, muestreo, descriptiva, inferencia, simulación | `tests/test_ui.py`, `test_sesion_ui.py`, `test_empaquetado.py` |
-| Calculadora de Windows y OSK | Calculadora científica segura integrada; entrada y atajos Qt | pruebas de UI |
+| 12 HTML de distribuciones + 3 de muestreo | 57 Markdown con fórmulas LaTeX, ejemplos y referencias, 31 figuras nuevas; texto seleccionable, LaTeX original y texturas Dear PyGui | `tests/test_teoria.py`, `test_teoria_dpg.py` |
+| `Interfaz.java` | Navegación Dear PyGui, controles dinámicos por metadatos, sesiones editables y vistas para distribuciones, muestreo, descriptiva, inferencia, simulación | `tests/test_ui.py`, `test_sesion_ui.py`, `test_empaquetado.py` |
+| Calculadora de Windows y OSK | Calculadora científica segura integrada; entrada y atajos Dear PyGui | pruebas de UI |
 
 ## Plan de implementación
 
-1. Motor independiente de Qt: registro/validación, SciPy, muestreo, probabilidad, descriptiva, inferencia, regresión y simulación.
+1. Motor independiente del toolkit gráfico: registro/validación, SciPy, muestreo, probabilidad, descriptiva, inferencia, regresión y simulación.
 2. Pruebas de SciPy y casos de `FuncionesTest` interpretados con semántica matemática correcta. Se anotan explícitamente las expectativas históricas incompatibles (la distribución t, la cola F, la desviación uniforme y el escalar multinomial).
-3. Teoría nueva en Markdown/LaTeX con figuras reproducibles; motor KaTeX y fuentes empaquetados localmente (sin CDN).
-4. UI orientada a metadatos, cálculos en QThread, gráficos interactivos, validación y exportaciones comunes.
+3. Teoría nueva en Markdown/LaTeX con figuras reproducibles; lector Dear PyGui local y recursos documentales empaquetados sin CDN.
+4. UI Dear PyGui orientada a metadatos, cálculos en ThreadPoolExecutor, gráficos Agg exportables, validación y exportaciones comunes.
 5. Documentación, capturas reproducibles y script PyInstaller. Cada plataforma debe ejecutar PyInstaller en *su propio SO*: no existe compilación cruzada de Windows desde Linux.
 
 ### Puertas de verificación antes de publicar
 
 - Desarrollo (cualquier SO): `pytest`, cobertura con ramas ≥85 %, `scripts/validar_contra_scipy.py`, `python -m ampu --verify-resources` y pruebas de sesión con tablas editadas.
-- Paquete (cada SO): `python scripts/build_exe.py --gui-self-test` construye y ejecuta **el artefacto**, valida recursos, exportaciones y teoría con Chromium/KaTeX reales. Fallar u omitir WebEngine **impide declarar validación visual**. Para inspección humana, `python -m ampu --self-test --capture-theory docs/capturas/05_teoria_oscuro.png` crea una captura solo cuando la página se haya cargado y comprobado.
-- En este sandbox únicamente se completaron pruebas QWidget con bibliotecas suplentes fuera del paquete y builds Linux `--onefile`/`--onedir` sin prueba visual; Windows y macOS exigen sus máquinas nativas. Una autoprueba de recursos no acredita compatibilidad de GUI ni portabilidad.
+- Paquete (cada SO): `python scripts/build_exe.py --gui-self-test` construye y ejecuta **el artefacto**, valida recursos, exportaciones, módulos Dear PyGui, teoría y asistente. La autoprueba no abre viewport; para inspección humana, `python scripts/capturar_ui.py` genera capturas reales en un escritorio.
+- Las pruebas sin viewport verifican widgets y lógica, no foco, DPI, lector de pantalla ni portabilidad visual. Windows, macOS y Linux exigen revisión en sus máquinas nativas.
 
 ## Semántica estable de la API
 

@@ -1,1 +1,1 @@
-"""Motor numérico independiente de PySide6 y de servicios de E/S."""
+"""Motor numérico independiente de Dear PyGui y de servicios de E/S."""
