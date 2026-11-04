@@ -67,6 +67,8 @@ python -m ampu --self-test
 
 Las pruebas de interfaz crean un **contexto Dear PyGui real sin viewport**, por lo que no necesitan pantalla ni simulan los widgets. `--self-test` recorre los seis análisis, teoría, asistente y temas; `--verify-resources` comprueba lecciones, imágenes, exportadores y sesión. Ninguna de estas opciones sustituye la revisión visual nativa.
 
+La revisión **visual, funcional, de navegación y de rendimiento** en un escritorio real se ejecuta con el [protocolo de pruebas de UI](PROTOCOLO_PRUEBAS_UI.md): 100 casos, 25 capturas obligatorias, valores esperados verificables e hipótesis priorizadas de regresión visual que se confirman o refutan rellenando el propio documento.
+
 Para capturas genuinas del viewport en un escritorio:
 
 ```bash
