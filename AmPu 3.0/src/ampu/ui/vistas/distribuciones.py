@@ -53,7 +53,7 @@ class VistaDistribuciones(VistaTrabajo):
         self.calcular_boton = botones_accion(izquierda, "Calcular y visualizar",
                                              self.calcular, lambda: self.abrir_teoria(self.clave_teoria()))
 
-        self.indicadores = KPIs(derecha, ["P(X=x) / f(x)", "Acumulada F(x)", "Media", "Desviación"])
+        self.indicadores = KPIs(derecha, ["P(X=x) / f(x)", "Acumulada F(x)", "Media", "Desviación"], oscuro=self.tema_actual == "oscuro")
         self.grafico_tipo = Selector(derecha, [("Masa / densidad", "densidad"),
             ("Distribución acumulada · CDF", "cdf")], callback=self._grafico_actual, width=260)
         self.grafico = Grafico(derecha)

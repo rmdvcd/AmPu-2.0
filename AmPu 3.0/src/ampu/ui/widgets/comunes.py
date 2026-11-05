@@ -6,9 +6,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 import dearpygui.dearpygui as dpg
-
-from ampu.ui.entradas import (filas_estratos, grupos, matriz, numeros,
-                              texto_escalar)
+from ampu.ui.temas import PALETAS, rgba
 
 Callback = Callable[..., Any]
 
@@ -33,25 +31,29 @@ def visible(control: int | str, mostrar: bool) -> None:
 
 def habilitar(control: int | str, activo: bool) -> None:
     if dpg.does_item_exist(control):
-        dpg.configure_item(control, enabled=activo)
+        dpg.configure_item(control, enabled=activo)def _color_texto_tema(oscuro: bool) -> tuple[int, int, int, int]:
+    p = PALETAS["oscuro" if oscuro else "claro"]
+    return rgba(p["texto"])
 
 
 def etiqueta(contenido: str, parent: int | str, *, wrap: int = -1,
-             color: tuple[int, int, int, int] | None = None) -> int | str:
+             oscuro: bool = False, color: tuple[int, int, int, int] | None = None) -> int | str:
     opciones: dict[str, Any] = {"parent": parent, "wrap": wrap}
+    if color is None:
+        color = _color_texto_tema(oscuro)
     if color is not None:
         opciones["color"] = color
     return dpg.add_text(contenido, **opciones)
 
-
-def encabezado(parent: int | str, codigo: str, titulo: str, descripcion: str) -> int | str:
+def encabezado(parent: int | str, codigo: str, titulo: str, descripcion: str, oscuro: bool = False) -> int | str:
     """Cabecera editorial uniforme de cada módulo."""
     with dpg.group(parent=parent) as grupo:
-        dpg.add_text(codigo, color=(8, 117, 104, 255))
-        dpg.add_text(titulo, color=(23, 43, 69, 255))
+        dpg.add_text(codigo, color=_color_texto_tema(oscuro))
+        dpg.add_text(titulo, color=_color_texto_tema(oscuro))
         dpg.add_text(descripcion, wrap=920)
         dpg.add_spacer(height=5)
     return grupo
+
 
 
 def marco(parent: int | str, *, width: int = -1, height: int = -1,
@@ -115,13 +117,13 @@ class Selector:
 class KPIs:
     """Banda de indicadores escalares creada con grupos Dear PyGui."""
 
-    def __init__(self, parent: int | str, titulos: list[str]):
+    def __init__(self, parent: int | str, titulos: list[str], oscuro: bool = False):
         self.valores: list[int | str] = []
         with dpg.group(parent=parent, horizontal=True, horizontal_spacing=8):
             for titulo in titulos:
-                with dpg.child_window(width=155, height=57, border=True):
-                    dpg.add_text(titulo.upper(), wrap=145, color=(96, 117, 140, 255))
-                    self.valores.append(dpg.add_text("—", wrap=145))
+                with dpg.child_window(width=180, height=65, border=True):
+                    dpg.add_text(titulo.upper(), wrap=170, color=_color_texto_tema(oscuro))
+                    self.valores.append(dpg.add_text("—", wrap=170))
 
     def actualizar(self, *valores: object) -> None:
         for control, contenido in zip(self.valores, valores):

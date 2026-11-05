@@ -16,8 +16,8 @@ from ampu.core.distribuciones.tabla import ResultadoDistribucion
 class Grafico:
     """Lienzo exportable con adaptador opcional a la interfaz Dear PyGui."""
 
-    ANCHO = 760
-    ALTO = 285
+    ANCHO = 720
+    ALTO = 270
 
     def __init__(self, parent: int | str | None = None):
         self.figura = Figure(figsize=(self.ANCHO / 100, self.ALTO / 100), dpi=100)
@@ -39,9 +39,9 @@ class Grafico:
     def montar(self, parent: int | str) -> None:
         self._contenedor = dpg.add_group(parent=parent)
         self._pie_tag = dpg.add_text("Visualización calculada por el motor estadístico.",
-                                     parent=self._contenedor, wrap=760)
+                                     parent=self._contenedor, wrap=800)
         self._descripcion_tag = dpg.add_text(self._descripcion, parent=self._contenedor,
-                                             wrap=760, color=(96, 117, 140, 255))
+                                             wrap=800, color=self._tinta())
 
     def _pie(self, contenido: str) -> None:
         if self._pie_tag is not None:
@@ -78,7 +78,7 @@ class Grafico:
             if eje.get_legend():
                 for texto in eje.get_legend().get_texts():
                     texto.set_fontsize(10 * self._escala)
-        self.figura.tight_layout(pad=1.6)
+        self.figura.tight_layout(pad=2.2)
         self.lienzo.draw()
         if self._contenedor is None:
             return

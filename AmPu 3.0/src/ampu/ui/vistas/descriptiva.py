@@ -31,7 +31,7 @@ class VistaDescriptiva(VistaTrabajo):
         self.modo = Selector(izquierda, ["Histograma", "Boxplot", "Dispersión"], callback=self._dibujar)
         self.boton = botones_accion(izquierda, "Analizar datos", self.calcular,
                                     lambda: self.abrir_teoria("descriptiva"))
-        self.indicadores = KPIs(derecha, ["Media", "Mediana", "Desv. muestral", "CV"])
+        self.indicadores = KPIs(derecha, ["Media", "Mediana", "Desv. muestral", "CV"], oscuro=self.tema_actual == "oscuro")
         self.nota = dpg.add_text("La varianza se calcula con denominador n − 1.",
                                  parent=derecha, wrap=800)
         dpg.add_text("PERFIL DE LA MUESTRA", parent=derecha)

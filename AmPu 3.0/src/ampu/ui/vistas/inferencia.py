@@ -55,7 +55,7 @@ class VistaInferencia(VistaTrabajo):
                 max_value=1_000_000, width=-1, callback=self._marcar_entradas)
         self.boton = botones_accion(izquierda, "Contrastar y explicar", self.calcular,
                                     lambda: self.abrir_teoria(self.clave_teoria()))
-        self.indicadores = KPIs(derecha, ["Estadístico / R²", "p-valor", "IC inferior", "IC superior"])
+        self.indicadores = KPIs(derecha, ["Estadístico / R²", "p-valor", "IC inferior", "IC superior"], oscuro=self.tema_actual == "oscuro")
         self.conclusion = dpg.add_text("Elige una técnica para ver su interpretación.",
                                        parent=derecha, wrap=800)
         dpg.add_text("EVIDENCIA VISUAL", parent=derecha)

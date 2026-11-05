@@ -43,7 +43,7 @@ class TablaDatos:
                 dpg.add_button(label="Anterior", callback=lambda: self.cambiar_pagina(-1), small=True)
                 self._pagina_tag = dpg.add_text("0 filas")
                 dpg.add_button(label="Siguiente", callback=lambda: self.cambiar_pagina(1), small=True)
-            self._contenedor = dpg.add_child_window(height=210, border=False,
+            self._contenedor = dpg.add_child_window(height=250, border=False,
                                                     horizontal_scrollbar=True)
         self._pintar()
 

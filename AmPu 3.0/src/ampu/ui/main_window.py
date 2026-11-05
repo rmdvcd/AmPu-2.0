@@ -65,7 +65,7 @@ class VentanaPrincipal:
         dpg.add_separator(parent=self.window)
         with dpg.group(parent=self.window, horizontal=True):
             with dpg.child_window(width=195, height=-1, border=True) as self.sidebar:
-                dpg.add_text("AmPu", color=(8, 117, 104, 255))
+                dpg.add_text("AmPu")
                 dpg.add_text("VERSIÓN 3.0")
                 dpg.add_separator()
                 dpg.add_text("EXPLORAR")
@@ -114,9 +114,8 @@ class VentanaPrincipal:
                     (dpg.mvThemeCol_WindowBg, fondo), (dpg.mvThemeCol_ChildBg, superficie),
                     (dpg.mvThemeCol_PopupBg, superficie), (dpg.mvThemeCol_MenuBarBg, superficie),
                     (dpg.mvThemeCol_FrameBg, rgba(p["campo"])),
-                    (dpg.mvThemeCol_Button, acento), (dpg.mvThemeCol_ButtonHovered, rgba("#27B4A5")),
-                    (dpg.mvThemeCol_ButtonActive, acento), (dpg.mvThemeCol_Header, acento),
-                    (dpg.mvThemeCol_HeaderHovered, rgba("#27B4A5")), (dpg.mvThemeCol_CheckMark, acento),
+                    (dpg.mvThemeCol_Button, acento), (dpg.mvThemeCol_ButtonHovered, acento), (dpg.mvThemeCol_ButtonActive, acento), (dpg.mvThemeCol_Header, acento),
+                    (dpg.mvThemeCol_HeaderHovered, acento), (dpg.mvThemeCol_CheckMark, acento),
                     (dpg.mvThemeCol_TabSelected, acento), (dpg.mvThemeCol_Border, borde)):
                     dpg.add_theme_color(objetivo, color, category=dpg.mvThemeCat_Core)
                 dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5, category=dpg.mvThemeCat_Core)
@@ -159,7 +158,9 @@ class VentanaPrincipal:
         with dpg.handler_registry():
             acciones = {dpg.mvKey_S: lambda: self.guardar_sesion(), dpg.mvKey_O: lambda: self.abrir_sesion(),
                         dpg.mvKey_E: lambda: self.exportar("excel"), dpg.mvKey_L: self.calculadora,
-                        dpg.mvKey_0: lambda: self.escalar_texto(0, restablecer=True)}
+                        dpg.mvKey_0: lambda: self.escalar_texto(0, restablecer=True),
+                        dpg.mvKey_Equal: lambda: self.escalar_texto(.1),
+                        dpg.mvKey_Minus: lambda: self.escalar_texto(-.1)}
             for tecla, accion in acciones.items():
                 dpg.add_key_press_handler(tecla, callback=lambda _s, _a, a=accion: self._atajo_ctrl(a))
             for numero, (clave, _titulo) in enumerate(PAGINAS, 1):
@@ -205,9 +206,9 @@ class VentanaPrincipal:
     def _mensaje_modal(self, titulo: str, contenido: str) -> None:
         if self._dialogo_mensaje is not None and dpg.does_item_exist(self._dialogo_mensaje):
             dpg.delete_item(self._dialogo_mensaje)
-        self._dialogo_mensaje = dpg.add_window(label=titulo, modal=True, width=520,
-            height=180, pos=[430, 250], no_resize=True)
-        dpg.add_text(str(contenido), parent=self._dialogo_mensaje, wrap=480)
+        self._dialogo_mensaje = dpg.add_window(label=titulo, modal=True, width=600,
+            height=220, pos=[430, 250])
+        dpg.add_text(str(contenido), parent=self._dialogo_mensaje, wrap=560)
         dpg.add_button(label="Aceptar", parent=self._dialogo_mensaje, width=120,
                        callback=lambda: dpg.delete_item(self._dialogo_mensaje))
 
