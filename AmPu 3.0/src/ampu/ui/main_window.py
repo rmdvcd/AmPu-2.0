@@ -159,7 +159,7 @@ class VentanaPrincipal:
             acciones = {dpg.mvKey_S: lambda: self.guardar_sesion(), dpg.mvKey_O: lambda: self.abrir_sesion(),
                         dpg.mvKey_E: lambda: self.exportar("excel"), dpg.mvKey_L: self.calculadora,
                         dpg.mvKey_0: lambda: self.escalar_texto(0, restablecer=True),
-                        dpg.mvKey_Equal: lambda: self.escalar_texto(.1),
+                        dpg.mvKey_Add: lambda: self.escalar_texto(.1),
                         dpg.mvKey_Minus: lambda: self.escalar_texto(-.1)}
             for tecla, accion in acciones.items():
                 dpg.add_key_press_handler(tecla, callback=lambda _s, _a, a=accion: self._atajo_ctrl(a))

@@ -15,6 +15,7 @@ from ampu.ui.widgets.trabajos import VistaTrabajo
 class VistaInferencia(VistaTrabajo):
     def __init__(self, parent: int | str):
         super().__init__()
+        self.tema_actual = "claro"
         self._restaurando = True
         _, izquierda, derecha = disposicion(parent, "05  /  DECISIONES BASADAS EN DATOS",
             "Inferencia", "Contrastes, intervalos, correlación y regresión con conclusiones responsables.")

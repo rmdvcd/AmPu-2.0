@@ -23,6 +23,7 @@ class VistaDistribuciones(VistaTrabajo):
 
     def __init__(self, parent: int | str):
         super().__init__()
+        self.tema_actual = "claro"
         self._valido = False
         self._restaurando = True
         _, izquierda, derecha = disposicion(

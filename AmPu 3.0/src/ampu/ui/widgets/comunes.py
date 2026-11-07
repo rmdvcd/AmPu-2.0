@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 import dearpygui.dearpygui as dpg
+from ampu.ui.entradas import texto_escalar
 from ampu.ui.temas import PALETAS, rgba
 
 Callback = Callable[..., Any]
@@ -31,9 +32,10 @@ def visible(control: int | str, mostrar: bool) -> None:
 
 def habilitar(control: int | str, activo: bool) -> None:
     if dpg.does_item_exist(control):
-        dpg.configure_item(control, enabled=activo)def _color_texto_tema(oscuro: bool) -> tuple[int, int, int, int]:
-    p = PALETAS["oscuro" if oscuro else "claro"]
-    return rgba(p["texto"])
+        dpg.configure_item(control, enabled=activo)
+def _color_texto_tema(oscuro: bool) -> tuple[int, int, int, int]:
+        p = PALETAS["oscuro" if oscuro else "claro"]
+        return rgba(p["texto"])
 
 
 def etiqueta(contenido: str, parent: int | str, *, wrap: int = -1,

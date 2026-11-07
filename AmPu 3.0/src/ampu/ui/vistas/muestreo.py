@@ -23,6 +23,7 @@ METODOS = [("Aleatorio simple · finito", "finito"),
 class VistaMuestreo(VistaTrabajo):
     def __init__(self, parent: int | str):
         super().__init__()
+        self.tema_actual = "claro"
         self._restaurando = True
         _, izquierda, derecha = disposicion(parent, "02  /  DISEÑO MUESTRAL", "Muestreo",
             "Planea el tamaño, elige unidades y reproduce cualquier sorteo con una semilla.")

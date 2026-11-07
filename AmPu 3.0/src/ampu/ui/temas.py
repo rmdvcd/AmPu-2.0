@@ -11,7 +11,7 @@ PALETAS = {
     "oscuro": {
         "fondo": "#19283B", "superficie": "#223246", "texto": "#E8EDF4",
         "secundario": "#C0CCD9", "acento": "#67D8CA", "error": "#FFAAAA",
-        "texto_boton": "#19283B", "borde": "#52647A", "campo": "#304156",
+        "texto_boton": "#19283B", "borde": "#8294A8", "campo": "#304156",
     },
 }
 

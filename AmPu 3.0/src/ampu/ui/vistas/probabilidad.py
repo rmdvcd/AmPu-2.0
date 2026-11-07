@@ -19,6 +19,7 @@ OPERACIONES = [("Combinatoria exacta", "combinatoria"),
 class VistaProbabilidad(VistaTrabajo):
     def __init__(self, parent: int | str):
         super().__init__()
+        self.tema_actual = "claro"
         self._restaurando = True
         _, izquierda, derecha = disposicion(parent, "04  /  FUNDAMENTOS",
             "Probabilidad básica", "Factoriales exactos, Bayes, independencia y momentos de variables finitas.")

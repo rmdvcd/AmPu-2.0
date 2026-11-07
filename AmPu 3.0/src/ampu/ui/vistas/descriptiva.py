@@ -15,6 +15,7 @@ from ampu.ui.widgets.trabajos import VistaTrabajo
 class VistaDescriptiva(VistaTrabajo):
     def __init__(self, parent: int | str):
         super().__init__()
+        self.tema_actual = "claro"
         self._restaurando = True
         _, izquierda, derecha = disposicion(parent, "03  /  EXPLORACIÓN DE DATOS",
             "Estadística descriptiva", "Pega observaciones, explora su dispersión y exporta frecuencias sin perder datos.")

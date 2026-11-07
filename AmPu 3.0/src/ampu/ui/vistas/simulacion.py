@@ -25,6 +25,7 @@ EXPERIMENTOS = [("Estimar π", "pi"), ("Integral de x² en [0,1]", "integral"),
 class VistaSimulacion(VistaTrabajo):
     def __init__(self, parent: int | str):
         super().__init__()
+        self.tema_actual = "claro"
         self._restaurando = True
         _, izquierda, derecha = disposicion(parent, "06  /  EXPERIMENTAR Y COMPARAR",
             "Simulación y ajuste", "Repite el experimento, compara modelos con datos y comunica incertidumbre.")
