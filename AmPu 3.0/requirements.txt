@@ -1,3 +1,0 @@
-# Una única fuente de versiones: pyproject.toml.
-# python3.12 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
--e .[dev]
